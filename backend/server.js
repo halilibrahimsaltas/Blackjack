@@ -3,6 +3,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const gameRoutes = require('./routes/gameRoutes');
+const authRoutes = require('./routes/authRoutes');
+const auth = require('./middleware/auth');
 
 dotenv.config();
 
@@ -16,7 +18,8 @@ app.use(express.json());
 connectDB();
 
 // Routes
-app.use('/api/game', gameRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/game', auth, gameRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const gameSchema = new mongoose.Schema({
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     playerCards: [{
         type: String,
         required: true
@@ -13,11 +18,6 @@ const gameSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 10
-    },
-    chips: {
-        type: Number,
-        required: true,
-        default: 1000
     },
     status: {
         type: String,
