@@ -142,8 +142,3 @@ blackjack/
 
 Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
 
-## İletişim 📧
-
-Proje Sahibi - [@your-twitter](https://twitter.com/your-twitter)
-
-Proje Linki: [https://github.com/your-username/blackjack](https://github.com/your-username/blackjack)
