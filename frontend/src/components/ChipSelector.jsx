@@ -1,55 +1,18 @@
 import { useState } from 'react';
 
-const ChipSelector = ({ onBetConfirm, maxChips }) => {
+const ChipSelector = ({ maxChips, onBetConfirm }) => {
   const [selectedChips, setSelectedChips] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
 
   const chipValues = [
-    { value: 500, color: 'purple', image: '/img/chips/chip-500.png' },
-    { value: 100, color: 'black', image: '/img/chips/chip-100.png' },
-    { value: 50, color: 'green', image: '/img/chips/chip-50.png' },
-    { value: 25, color: 'blue', image: '/img/chips/chip-25.png' },
-    { value: 10, color: 'red', image: '/img/chips/chip-10.png' },
-    { value: 5, color: 'gray', image: '/img/chips/chip-5.png' }
+    { value: 500, image: '/img/chips/chip-500.png' },
+    { value: 100, image: '/img/chips/chip-100.png' },
+    { value: 50, image: '/img/chips/chip-50.png' },
+    { value: 25, image: '/img/chips/chip-25.png' },
+    { value: 10, image: '/img/chips/chip-10.png' },
+    { value: 5, image: '/img/chips/chip-5.png' }
   ];
 
   const totalBet = selectedChips.reduce((sum, chip) => sum + chip.value, 0);
-
-  const handleDragStart = (e, chip) => {
-    setIsDragging(true);
-    e.dataTransfer.setData('chipValue', JSON.stringify(chip));
-    
-    const dragImage = new Image();
-    dragImage.src = chip.image;
-    dragImage.width = 40;
-    dragImage.height = 40;
-    e.dataTransfer.setDragImage(dragImage, 20, 20);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const chip = JSON.parse(e.dataTransfer.getData('chipValue'));
-    
-    if (totalBet + chip.value <= maxChips) {
-      setSelectedChips([...selectedChips, chip]);
-    }
-  };
-
-  const removeChip = (index) => {
-    setSelectedChips(selectedChips.filter((_, i) => i !== index));
-  };
-
-  const handleConfirm = () => {
-    if (totalBet >= 5) {
-      onBetConfirm(totalBet);
-      setSelectedChips([]);
-    }
-  };
 
   const handleChipClick = (chip) => {
     if (totalBet + chip.value <= maxChips) {
@@ -59,12 +22,18 @@ const ChipSelector = ({ onBetConfirm, maxChips }) => {
 
   const handleChipRightClick = (e, chipValue) => {
     e.preventDefault(); // Sağ tık menüsünü engelle
-    // Son eklenen aynı değerdeki chip'i bul ve kaldır
     const index = selectedChips.map(chip => chip.value).lastIndexOf(chipValue);
     if (index !== -1) {
       const newChips = [...selectedChips];
       newChips.splice(index, 1);
       setSelectedChips(newChips);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (totalBet >= 5) {
+      onBetConfirm(totalBet);
+      setSelectedChips([]);
     }
   };
 
@@ -82,8 +51,6 @@ const ChipSelector = ({ onBetConfirm, maxChips }) => {
         {chipValues.map((chip) => (
           <div
             key={chip.value}
-            draggable
-            onDragStart={(e) => handleDragStart(e, chip)}
             onClick={() => handleChipClick(chip)}
             onContextMenu={(e) => handleChipRightClick(e, chip.value)}
             className="relative w-16 h-16 md:w-20 md:h-20 cursor-pointer hover:scale-110 transition-transform select-none"
@@ -98,16 +65,11 @@ const ChipSelector = ({ onBetConfirm, maxChips }) => {
       </div>
 
       {/* Bahis Alanı */}
-      <div
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        className={`w-72 h-40 mx-auto rounded-xl 
-          bg-gradient-to-br from-gray-800 to-gray-900
-          border-2 border-yellow-500/30 flex flex-col items-center justify-center
-          ${isDragging ? 'ring-2 ring-yellow-500 scale-105' : ''}
-          transition-all duration-300 relative overflow-hidden
-          shadow-lg hover:shadow-xl mb-8`}
-      >
+      <div className="w-72 h-40 mx-auto rounded-xl 
+        bg-gradient-to-br from-gray-800 to-gray-900
+        border-2 border-yellow-500/30 flex flex-col items-center justify-center
+        transition-all duration-300 relative overflow-hidden
+        shadow-lg hover:shadow-xl mb-8">
         {/* Seçili Chipler */}
         <div className="absolute inset-0 flex flex-wrap justify-center items-center gap-2 p-2">
           {selectedChips.map((chip, index) => {
@@ -194,7 +156,7 @@ const ChipSelector = ({ onBetConfirm, maxChips }) => {
         ) : totalBet > maxChips ? (
           <p>Maksimum bahis: {maxChips}</p>
         ) : (
-          <p>Chip'leri daire içine sürükleyin veya tıklayarak kaldırın</p>
+          <p>Chip'leri eklemek için tıklayın, kaldırmak için sağ tıklayın</p>
         )}
       </div>
     </div>

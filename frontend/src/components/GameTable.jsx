@@ -71,13 +71,13 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="p-8 rounded-xl bg-table-green mb-8">
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="min-h-[600px] p-12 rounded-xl bg-table-green mb-8">
         {/* Krupiye Kartları */}
-        <div className="mb-16 text-center">
-          <div className="flex flex-col items-center mb-6">
-            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">
-              KRUPİYE ({status === 'active' ? dealerValue : dealerValue})
+        <div className="mb-20 text-center">
+          <div className="flex flex-col items-center mb-8">
+            <h2 className="text-4xl font-bold text-yellow-500 font-serif tracking-wider mb-2">
+              KRUPİYE <span className="text-3xl">({status === 'active' ? dealerValue : dealerValue})</span>
             </h2>
           </div>
           <div className="flex gap-4 justify-center">
@@ -92,10 +92,10 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
         </div>
 
         {/* Oyuncu Kartları */}
-        <div className="mb-12 text-center">
-          <div className="flex flex-col items-center mb-6">
-            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">
-              OYUNCU ({playerValue})
+        <div className="mb-16 text-center">
+          <div className="flex flex-col items-center mb-8">
+            <h2 className="text-4xl font-bold text-yellow-500 font-serif tracking-wider mb-2">
+              OYUNCU <span className="text-3xl">({playerValue})</span>
               {isBlackjack && status === 'active' && <span className="ml-2">🎯 Blackjack!</span>}
               {!isBlackjack && is21 && status === 'active' && <span className="ml-2">🎯 21!</span>}
             </h2>
@@ -108,7 +108,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
         </div>
 
         {/* Kontroller ve Bahis */}
-        <div className="border-t border-white/20 pt-6">
+        <div className="border-t border-white/20 pt-8">
           <div className="flex justify-center items-center gap-4">
             {status === 'active' && !isBlackjack && !is21 && (
               <>
