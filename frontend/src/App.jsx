@@ -123,7 +123,7 @@ function App() {
         </div>
 
         {/* Ana İçerik */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 mb-8">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 mb-8">
           {!user ? (
             showRegister ? (
               <RegisterForm

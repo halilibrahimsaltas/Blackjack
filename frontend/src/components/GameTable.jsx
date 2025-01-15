@@ -71,8 +71,9 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips, user }) => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      <div className="min-h-[600px] p-12 rounded-xl bg-table-green mb-8">
+    <div className="w-full max-w-[1920px] mx-auto flex gap-8">
+      {/* Ana Oyun Masası */}
+      <div className="flex-1 min-h-[600px] p-12 rounded-xl bg-table-green mb-8">
         {/* Krupiye Kartları */}
         <div className="mb-20 text-center">
           <div className="flex flex-col items-center mb-8">
@@ -107,7 +108,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips, user }) => {
           </div>
         </div>
 
-        {/* Kontroller ve Bahis */}
+        {/* Kontroller */}
         <div className="border-t border-white/20 pt-8">
           <div className="flex justify-center items-center gap-4">
             {status === 'active' && !isBlackjack && !is21 && (
@@ -126,15 +127,6 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips, user }) => {
                 </button>
               </>
             )}
-
-            {status !== 'active' && (
-              <div className="flex flex-col items-center gap-4">
-                <ChipSelector
-                  maxChips={chips}
-                  onBetConfirm={onStartGame}
-                />
-              </div>
-            )}
           </div>
 
           {/* Oyun Sonucu */}
@@ -149,6 +141,19 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips, user }) => {
           )}
         </div>
       </div>
+
+      {/* Sağ Taraf - Bahis Bölümü */}
+      {status !== 'active' && (
+        <div className="w-96 bg-gray-800/50 rounded-xl p-6 h-fit sticky top-8">
+          <h3 className="text-2xl font-bold text-yellow-500 font-serif tracking-wider mb-6 text-center">
+            Yeni El
+          </h3>
+          <ChipSelector
+            maxChips={chips}
+            onBetConfirm={onStartGame}
+          />
+        </div>
+      )}
     </div>
   );
 };
