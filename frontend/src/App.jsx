@@ -145,6 +145,7 @@ function App() {
               onStand={stand}
               onStartGame={startGame}
               chips={user.chips}
+              user={user}
             />
           )}
         </div>

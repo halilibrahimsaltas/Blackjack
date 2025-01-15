@@ -29,7 +29,7 @@ const calculateHandValue = (cards) => {
   return value;
 };
 
-const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
+const GameTable = ({ game, onHit, onStand, onStartGame, chips, user }) => {
   if (!game) return null;
   const [showWinMessage, setShowWinMessage] = useState(false);
 
@@ -95,7 +95,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
         <div className="mb-16 text-center">
           <div className="flex flex-col items-center mb-8">
             <h2 className="text-4xl font-bold text-yellow-500 font-serif tracking-wider mb-2">
-              OYUNCU <span className="text-3xl">({playerValue})</span>
+              {user?.username?.toUpperCase() || 'OYUNCU'} <span className="text-3xl">({playerValue})</span>
               {isBlackjack && status === 'active' && <span className="ml-2">🎯 Blackjack!</span>}
               {!isBlackjack && is21 && status === 'active' && <span className="ml-2">🎯 21!</span>}
             </h2>
@@ -131,7 +131,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
               <div className="flex flex-col items-center gap-4">
                 <ChipSelector
                   maxChips={chips}
-                  onBetPlaced={onStartGame}
+                  onBetConfirm={onStartGame}
                 />
               </div>
             )}
