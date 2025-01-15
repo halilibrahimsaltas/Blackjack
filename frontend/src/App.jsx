@@ -144,13 +144,14 @@ function App() {
               onHit={hit} 
               onStand={stand}
               onStartGame={startGame}
+              chips={user.chips}
             />
           )}
         </div>
 
         {/* Alt Bilgi */}
         <div className="text-center text-gray-400 text-sm">
-          <p>🎰 Şansınız bol olsun! 🎲</p>
+          <p>🎮 Bu bir demo projedir</p>
         </div>
       </div>
     </div>

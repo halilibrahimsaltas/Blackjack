@@ -1,5 +1,6 @@
 import Card from './Card';
 import { useState, useEffect } from 'react';
+import ChipSelector from './ChipSelector';
 
 const calculateHandValue = (cards) => {
   let value = 0;
@@ -28,12 +29,11 @@ const calculateHandValue = (cards) => {
   return value;
 };
 
-const GameTable = ({ game, onHit, onStand, onStartGame }) => {
+const GameTable = ({ game, onHit, onStand, onStartGame, chips }) => {
   if (!game) return null;
-  const [newBet, setNewBet] = useState(10);
   const [showWinMessage, setShowWinMessage] = useState(false);
 
-  const { playerCards, dealerCards, status, chips, currentBet } = game;
+  const { playerCards, dealerCards, status, currentBet } = game;
   
   // El değerlerini hesapla
   const playerValue = calculateHandValue(playerCards);
@@ -76,12 +76,9 @@ const GameTable = ({ game, onHit, onStand, onStartGame }) => {
         {/* Krupiye Kartları */}
         <div className="mb-16 text-center">
           <div className="flex flex-col items-center mb-6">
-            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">KRUPİYE</h2>
-            <div className="bg-gray-800/50 px-6 py-2 rounded-full border border-yellow-500/30">
-              <span className="text-xl font-bold text-yellow-300">
-                {status === 'active' ? `Görünen: ${dealerValue}` : `Toplam: ${dealerValue}`}
-              </span>
-            </div>
+            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">
+              KRUPİYE ({status === 'active' ? dealerValue : dealerValue})
+            </h2>
           </div>
           <div className="flex gap-4 justify-center">
             {dealerCards.map((card, index) => (
@@ -97,14 +94,11 @@ const GameTable = ({ game, onHit, onStand, onStartGame }) => {
         {/* Oyuncu Kartları */}
         <div className="mb-12 text-center">
           <div className="flex flex-col items-center mb-6">
-            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">OYUNCU</h2>
-            <div className="bg-gray-800/50 px-6 py-2 rounded-full border border-yellow-500/30">
-              <span className="text-xl font-bold text-yellow-300">
-                Toplam: {playerValue}
-                {isBlackjack && status === 'active' && <span className="ml-2">🎯 Blackjack!</span>}
-                {!isBlackjack && is21 && status === 'active' && <span className="ml-2">🎯 21!</span>}
-              </span>
-            </div>
+            <h2 className="text-2xl font-extrabold text-white mb-2 font-serif tracking-wide">
+              OYUNCU ({playerValue})
+              {isBlackjack && status === 'active' && <span className="ml-2">🎯 Blackjack!</span>}
+              {!isBlackjack && is21 && status === 'active' && <span className="ml-2">🎯 21!</span>}
+            </h2>
           </div>
           <div className="flex gap-4 justify-center">
             {playerCards.map((card, index) => (
@@ -115,66 +109,38 @@ const GameTable = ({ game, onHit, onStand, onStartGame }) => {
 
         {/* Kontroller ve Bahis */}
         <div className="border-t border-white/20 pt-6">
-          <div className="flex justify-between items-center mb-6">
-            {/* Chips ve Bahis Bilgisi */}
-            <div className="bg-gray-800/50 px-6 py-3 rounded-xl border border-yellow-500/30">
-              <div className="flex gap-6">
-                <p className="text-lg font-semibold">
-                  <span className="text-yellow-500 font-bold">CHIPS</span>
-                  <span className="text-white ml-2 font-mono">{chips}</span>
-                </p>
-                <p className="text-lg font-semibold">
-                  <span className="text-yellow-500 font-bold">BAHİS</span>
-                  <span className="text-white ml-2 font-mono">{currentBet}</span>
-                </p>
+          <div className="flex justify-center items-center gap-4">
+            {status === 'active' && !isBlackjack && !is21 && (
+              <>
+                <button 
+                  onClick={onHit}
+                  className="game-button px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-500/30"
+                >
+                  Kart Çek
+                </button>
+                <button 
+                  onClick={onStand}
+                  className="game-button px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-red-500/30"
+                >
+                  Dur
+                </button>
+              </>
+            )}
+
+            {status !== 'active' && (
+              <div className="flex flex-col items-center gap-4">
+                <ChipSelector
+                  maxChips={chips}
+                  onBetPlaced={onStartGame}
+                />
               </div>
-            </div>
-
-            {/* Oyun Kontrolleri */}
-            <div className="flex items-center gap-4">
-              {status === 'active' && !isBlackjack && !is21 && (
-                <>
-                  <button 
-                    onClick={onHit}
-                    className="game-button bg-blue-600 hover:bg-blue-700 text-lg"
-                  >
-                    Kart Çek
-                  </button>
-                  <button 
-                    onClick={onStand}
-                    className="game-button bg-red-600 hover:bg-red-700 text-lg"
-                  >
-                    Dur
-                  </button>
-                </>
-              )}
-
-              {status !== 'active' && (
-                <div className="flex items-center gap-4">
-                  <input
-                    type="number"
-                    min="10"
-                    max={chips}
-                    value={newBet}
-                    onChange={(e) => setNewBet(Number(e.target.value))}
-                    className="w-24 px-3 py-2 text-lg rounded-lg border-2 border-yellow-500 bg-gray-800/50 text-white"
-                  />
-                  <button
-                    onClick={() => onStartGame(newBet)}
-                    disabled={newBet > chips || newBet < 10}
-                    className="game-button bg-green-600 hover:bg-green-700 text-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
-                  >
-                    Yeni El
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Oyun Sonucu */}
           {(status !== 'active' || showWinMessage) && (
-            <div className="flex justify-center items-center border-t border-white/10 pt-6">
-              <div className="bg-gray-800/50 px-8 py-3 rounded-full border border-yellow-500/30">
+            <div className="flex justify-center items-center border-t border-white/10 pt-6 mt-6">
+              <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm px-8 py-3 rounded-xl border border-yellow-500/30 shadow-lg">
                 <h3 className="text-2xl font-bold">
                   {getResultMessage()}
                 </h3>
