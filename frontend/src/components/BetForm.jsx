@@ -15,7 +15,7 @@ const BetForm = ({ onStartGame, currentChips = 1000 }) => {
       <div className="mb-6 text-center">
         <div className="inline-block bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-4">
           <p className="text-xl text-white font-bold">
-            Mevcut Chips: <span className="text-2xl ml-2">{currentChips}</span>
+            Mevcut Bakiye: <span className="text-2xl ml-2">{currentChips}</span>
           </p>
         </div>
       </div>

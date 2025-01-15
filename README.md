@@ -6,11 +6,14 @@ Bu proje, MERN stack (MongoDB, Express.js, React, Node.js) kullanılarak gelişt
 
 ## Özellikler 🌟
 
-- Tek oyunculu Blackjack oyunu
+- Kullanıcı kaydı ve girişi
+- JWT tabanlı kimlik doğrulama
+- Otomatik 21 kazanma sistemi
 - Gerçek zamanlı oyun mantığı
-- Skor tablosu
+- Kişisel oyun istatistikleri
 - Responsive tasarım
-- Basit bahis sistemi
+- Gelişmiş bahis sistemi
+- Animasyonlu bildirimler
 
 ## Teknoloji Stack'i 🛠
 
@@ -20,6 +23,8 @@ Bu proje, MERN stack (MongoDB, Express.js, React, Node.js) kullanılarak gelişt
 - Express.js
 - MongoDB
 - Mongoose
+- JWT (JSON Web Tokens)
+- Bcrypt.js
 
 ### Frontend
 
@@ -48,7 +53,7 @@ Bu proje, MERN stack (MongoDB, Express.js, React, Node.js) kullanılarak gelişt
 1. Projeyi klonlayın
 
 ```bash
-git clone https://github.com/your-username/blackjack.git
+git clone https://github.com/halilibrahimsaltas/blackjack.git
 cd blackjack
 ```
 
@@ -71,6 +76,7 @@ npm install
 ```env
 MONGODB_URI=your_mongodb_uri
 PORT=5000
+JWT_SECRET=your_jwt_secret_key
 ```
 
 5. Uygulamayı başlatın
@@ -112,13 +118,18 @@ blackjack/
 
 ## API Endpoints 🔌
 
+### Kullanıcı İşlemleri
+
+- POST /api/auth/register - Yeni kullanıcı kaydı
+- POST /api/auth/login - Kullanıcı girişi
+- GET /api/auth/profile - Kullanıcı profili
+
 ### Oyun İşlemleri
 
 - POST /api/game/start - Yeni oyun başlatma
 - POST /api/game/hit - Kart çekme
 - POST /api/game/stand - Durma
 - GET /api/game/scores - En yüksek skorlar
-- GET /api/game/statistics - Oyun istatistikleri
 
 ## Oyun Kuralları 📋
 
@@ -129,6 +140,8 @@ blackjack/
 5. Krupiye 17 veya üzerinde durmak zorundadır
 6. Oyuna 1000 chip ile başlanır
 7. Minimum bahis 10 chip'tir
+8. 21'e ulaşıldığında otomatik kazanma
+9. Her el sonunda yeni bahis imkanı
 
 ## Katkıda Bulunma 🤝
 
@@ -141,4 +154,3 @@ blackjack/
 ## Lisans 📝
 
 Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
-
