@@ -142,6 +142,12 @@ blackjack/
 7. Minimum bahis 10 chip'tir
 8. 21'e ulaşıldığında otomatik kazanma
 9. Her el sonunda yeni bahis imkanı
+10. Split özelliği:
+    - İlk iki kart aynı değerde ise split yapılabilir
+    - Split için ilk bahis kadar ek chip gerekir
+    - Her el için ayrı ayrı oynanır ve kazanç hesaplanır
+    - Split edilen eller için ayrı ayrı kart çekilebilir
+    - Her el bağımsız olarak kazanabilir veya kaybedebilir
 
 ## Katkıda Bulunma 🤝
 

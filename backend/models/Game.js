@@ -10,6 +10,10 @@ const gameSchema = new mongoose.Schema({
         type: String,
         required: true
     }],
+    splitCards: [{
+        type: String,
+        default: []
+    }],
     dealerCards: [{
         type: String,
         required: true
@@ -19,10 +23,24 @@ const gameSchema = new mongoose.Schema({
         required: true,
         min: 10
     },
+    splitBet: {
+        type: Number,
+        default: 0
+    },
     status: {
         type: String,
-        enum: ['active', 'player_won', 'dealer_won', 'push'],
+        enum: ['active', 'player_won', 'dealer_won', 'push', 'split_active'],
         default: 'active'
+    },
+    splitStatus: {
+        type: String,
+        enum: ['none', 'active', 'player_won', 'dealer_won', 'push'],
+        default: 'none'
+    },
+    activeHand: {
+        type: String,
+        enum: ['main', 'split'],
+        default: 'main'
     },
     createdAt: {
         type: Date,

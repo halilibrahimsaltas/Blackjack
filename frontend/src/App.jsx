@@ -77,6 +77,17 @@ function App() {
     }
   }
 
+  const split = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/game/split/${game._id}`)
+      setGame(response.data.game)
+      setUser(prev => ({ ...prev, chips: response.data.userChips }))
+    } catch (error) {
+      console.error('Split yapılamadı:', error)
+      alert(error.response?.data?.message || 'Split yapılırken bir hata oluştu')
+    }
+  }
+
   const hit = async () => {
     try {
       const response = await axios.post(`${API_URL}/game/hit/${game._id}`)
@@ -173,6 +184,7 @@ function App() {
               onHit={hit} 
               onStand={stand}
               onStartGame={startGame}
+              onSplit={split}
               chips={user.chips}
               user={user}
             />
