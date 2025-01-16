@@ -14,12 +14,7 @@ const ScoreBoard = () => {
 
     const fetchScores = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/game/scores`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await axios.get(`${API_URL}/game/scores`);
             setScores(response.data);
             setLoading(false);
         } catch (error) {
@@ -31,49 +26,101 @@ const ScoreBoard = () => {
 
     if (loading) {
         return (
-            <div className="text-center p-4">
-                <p className="text-white">Yükleniyor...</p>
+            <div className="flex justify-center items-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="text-center p-4">
-                <p className="text-red-500">{error}</p>
+            <div className="text-center p-8">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <p className="text-red-500">{error}</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
-            <h2 className="text-2xl font-bold text-white mb-4 text-center">Skor Tablosu</h2>
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-gray-700">
-                            <th className="px-4 py-2 text-left text-gray-400">Sıra</th>
-                            <th className="px-4 py-2 text-left text-gray-400">Oyuncu</th>
-                            <th className="px-4 py-2 text-right text-gray-400">Chips</th>
-                            <th className="px-4 py-2 text-right text-gray-400">Kazanılan</th>
-                            <th className="px-4 py-2 text-right text-gray-400">Toplam Oyun</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {scores.map((score, index) => (
-                            <tr 
-                                key={score._id} 
-                                className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
-                            >
-                                <td className="px-4 py-2 text-gray-300">{index + 1}</td>
-                                <td className="px-4 py-2 text-yellow-500 font-medium">{score.username}</td>
-                                <td className="px-4 py-2 text-right text-green-400">{score.chips}</td>
-                                <td className="px-4 py-2 text-right text-blue-400">{score.gamesWon}</td>
-                                <td className="px-4 py-2 text-right text-gray-300">{score.totalGames}</td>
+        <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-yellow-500 font-serif tracking-wider mb-8 text-center">
+                En İyi Oyuncular
+            </h2>
+            <div className="bg-gray-800/50 rounded-xl p-6 shadow-lg border border-yellow-500/20">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b-2 border-yellow-500/20">
+                                <th className="px-6 py-4 text-left text-yellow-500 font-serif tracking-wider">#</th>
+                                <th className="px-6 py-4 text-left text-yellow-500 font-serif tracking-wider">Oyuncu</th>
+                                <th className="px-6 py-4 text-right text-yellow-500 font-serif tracking-wider">Chips</th>
+                                <th className="px-6 py-4 text-right text-yellow-500 font-serif tracking-wider">Kazanılan</th>
+                                <th className="px-6 py-4 text-right text-yellow-500 font-serif tracking-wider">Toplam Oyun</th>
+                                <th className="px-6 py-4 text-right text-yellow-500 font-serif tracking-wider">Kazanma %</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {scores.map((score, index) => {
+                                const winRate = score.totalGames > 0 
+                                    ? ((score.gamesWon / score.totalGames) * 100).toFixed(1)
+                                    : '0.0';
+                                    
+                                return (
+                                    <tr 
+                                        key={score._id} 
+                                        className={`
+                                            border-b border-gray-700/50 
+                                            ${index === 0 ? 'bg-yellow-500/10' : 'hover:bg-gray-700/30'} 
+                                            transition-colors
+                                        `}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <span className={`
+                                                inline-flex items-center justify-center w-8 h-8 rounded-full 
+                                                ${index === 0 ? 'bg-yellow-500 text-black' : 
+                                                  index === 1 ? 'bg-gray-400 text-black' : 
+                                                  index === 2 ? 'bg-yellow-700 text-white' : 
+                                                  'bg-gray-700 text-gray-300'}
+                                                font-bold
+                                            `}>
+                                                {index + 1}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="font-medium text-white">
+                                                {score.username}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-green-400 font-mono">
+                                                {score.chips.toLocaleString()}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-blue-400 font-mono">
+                                                {score.gamesWon}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-gray-300 font-mono">
+                                                {score.totalGames}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={`
+                                                font-mono
+                                                ${parseFloat(winRate) >= 50 ? 'text-green-400' : 'text-red-400'}
+                                            `}>
+                                                {winRate}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

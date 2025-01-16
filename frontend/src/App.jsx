@@ -4,6 +4,7 @@ import GameTable from './components/GameTable'
 import BetForm from './components/BetForm'
 import LoginForm from './components/LoginForm'
 import RegisterForm from './components/RegisterForm'
+import ScoreBoard from './components/ScoreBoard'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -11,6 +12,7 @@ function App() {
   const [game, setGame] = useState(null)
   const [user, setUser] = useState(null)
   const [showRegister, setShowRegister] = useState(false)
+  const [showScores, setShowScores] = useState(false)
 
   // Token'ı axios'a ekle
   useEffect(() => {
@@ -102,9 +104,40 @@ function App() {
       <div className="container mx-auto px-4 py-8">
         {/* Başlık ve Kullanıcı Bilgisi */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-yellow-500 font-serif mb-2 tracking-wider">BLACKJACK</h1>
+          <div className="flex justify-between items-center mb-6">
+            {user && (
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowScores(!showScores)}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  {showScores ? 'Oyuna Dön' : 'Skor Tablosu'}
+                </button>
+                {showScores && (
+                  <button
+                    onClick={() => {
+                      setShowScores(false);
+                      setGame(null);
+                    }}
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                  >
+                    Yeni Oyun
+                  </button>
+                )}
+              </div>
+            )}
+            <h1 className="text-5xl font-bold text-yellow-500 font-serif tracking-wider mx-auto">BLACKJACK</h1>
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                Çıkış Yap
+              </button>
+            )}
+          </div>
           <div className="w-32 h-1 bg-yellow-500 mx-auto rounded-full mb-4"></div>
-          {user && (
+          {user && !showScores && (
             <div className="flex justify-center items-center gap-6">
               <p className="text-white">
                 <span className="text-yellow-500">Oyuncu:</span> {user.username}
@@ -112,12 +145,6 @@ function App() {
               <p className="text-white">
                 <span className="text-yellow-500">Chips:</span> {user.chips}
               </p>
-              <button
-                onClick={handleLogout}
-                className="text-red-500 hover:text-red-400 font-semibold"
-              >
-                Çıkış Yap
-              </button>
             </div>
           )}
         </div>
@@ -136,6 +163,8 @@ function App() {
                 onSwitchToRegister={() => setShowRegister(true)}
               />
             )
+          ) : showScores ? (
+            <ScoreBoard />
           ) : !game ? (
             <BetForm onStartGame={startGame} currentChips={user.chips} />
           ) : (
