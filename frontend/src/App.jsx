@@ -115,39 +115,45 @@ function App() {
       <div className="container mx-auto px-4 py-8">
         {/* Başlık ve Kullanıcı Bilgisi */}
         <div className="text-center mb-12">
-          <div className="flex justify-between items-center mb-6">
-            {user && (
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowScores(!showScores)}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
-                >
-                  {showScores ? 'Oyuna Dön' : 'Skor Tablosu'}
-                </button>
-                {showScores && (
+          <div className="grid grid-cols-3 items-center mb-6">
+            <div className="justify-self-start">
+              {user && (
+                <div className="flex gap-4">
                   <button
-                    onClick={() => {
-                      setShowScores(false);
-                      setGame(null);
-                    }}
-                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                    onClick={() => setShowScores(!showScores)}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                   >
-                    Yeni Oyun
+                    {showScores ? 'Oyuna Dön' : 'Skor Tablosu'}
                   </button>
-                )}
-              </div>
-            )}
-            <h1 className="text-5xl font-bold text-yellow-500 font-serif tracking-wider mx-auto">BLACKJACK</h1>
-            {user && (
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
-              >
-                Çıkış Yap
-              </button>
-            )}
+                  {showScores && (
+                    <button
+                      onClick={() => {
+                        setShowScores(false);
+                        setGame(null);
+                      }}
+                      className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                    >
+                      Yeni Oyun
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center">
+              <h1 className="text-5xl font-bold text-yellow-500 font-serif tracking-wider">BLACKJACK</h1>
+              <div className="w-32 h-1 bg-yellow-500 rounded-full mt-4"></div>
+            </div>
+            <div className="justify-self-end">
+              {user && (
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  Çıkış Yap
+                </button>
+              )}
+            </div>
           </div>
-          <div className="w-32 h-1 bg-yellow-500 mx-auto rounded-full mb-4"></div>
           {user && !showScores && (
             <div className="flex justify-center items-center gap-6">
               <p className="text-white">
