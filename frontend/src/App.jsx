@@ -95,7 +95,7 @@ function App() {
       setUser(prev => ({ ...prev, chips: response.data.userChips }))
     } catch (error) {
       console.error('Kart çekilemedi:', error)
-      alert('Kart çekilirken bir hata oluştu')
+      alert(error.response?.data?.message || 'Kart çekilirken bir hata oluştu')
     }
   }
 

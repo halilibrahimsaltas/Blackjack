@@ -54,7 +54,7 @@ const useGame = () => {
                 throw new Error('Aktif oyun bulunamadı');
             }
 
-            const response = await axios.post(`${API_URL}/game/hit`,
+            const response = await axios.post(`${API_URL}/game/hit/${game._id}`,
                 {},
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
@@ -80,7 +80,7 @@ const useGame = () => {
                 throw new Error('Aktif oyun bulunamadı');
             }
 
-            const response = await axios.post(`${API_URL}/game/stand`,
+            const response = await axios.post(`${API_URL}/game/stand/${game._id}`,
                 {},
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
