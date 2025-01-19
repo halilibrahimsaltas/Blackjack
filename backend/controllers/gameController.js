@@ -85,7 +85,8 @@ const split = async (req, res) => {
         await user.save();
 
         game.status = 'split_active';
-        game.splitStatus = 'active';
+        game.mainHandStatus = 'active';
+        game.splitHandStatus = 'active';
         game.activeHand = 'main';
         await game.save();
 
@@ -122,8 +123,11 @@ const hit = async (req, res) => {
         if (handValue > 21) {
             if (game.status === 'split_active') {
                 if (game.activeHand === 'main') {
+                    game.status = 'split_active';
+                    game.mainHandStatus = 'dealer_won';
                     game.activeHand = 'split';
                 } else {
+                    game.splitHandStatus = 'dealer_won';
                     await handleSplitEnd(game, userId);
                 }
             } else {
@@ -165,24 +169,28 @@ const stand = async (req, res) => {
             return res.status(400).json({ message: 'Bu oyun aktif değil' });
         }
 
-        // Split durumunda ve ilk el ise
-        if (game.status === 'split_active' && game.activeHand === 'main') {
-            game.activeHand = 'split';
-            await game.save();
-            return res.json({ game });
-        }
-
         const deck = createDeck();
-        
-        // Krupiye için kart çek
-        while (calculateHandValue(game.dealerCards) < 17) {
-            game.dealerCards.push(deck.pop());
-        }
 
-        // Split durumunda
+        // Split durumunda ve ilk el ise
         if (game.status === 'split_active') {
-            await handleSplitEnd(game, userId);
+            if (game.activeHand === 'main') {
+                game.mainHandStatus = 'stand';
+                game.activeHand = 'split';
+                await game.save();
+                return res.json({ game });
+            } else {
+                game.splitHandStatus = 'stand';
+                // Krupiye için kart çek
+                while (calculateHandValue(game.dealerCards) < 17) {
+                    game.dealerCards.push(deck.pop());
+                }
+                await handleSplitEnd(game, userId);
+            }
         } else {
+            // Krupiye için kart çek
+            while (calculateHandValue(game.dealerCards) < 17) {
+                game.dealerCards.push(deck.pop());
+            }
             game.status = determineWinner(game.playerCards, game.dealerCards);
             await handleGameEnd(game, userId);
         }
@@ -199,17 +207,45 @@ const stand = async (req, res) => {
     }
 };
 
+// Normal oyun sonucunu hesapla
+const handleGameEnd = async (game, userId) => {
+    const user = await User.findById(userId);
+    user.totalGames += 1;
+    user.lastBetAmount = game.currentBet;
+
+    if (game.status === 'player_won') {
+        user.chips += game.currentBet * 2;
+        user.gamesWon += 1;
+    } else if (game.status === 'push') {
+        user.chips += game.currentBet;
+    }
+
+    await user.save();
+};
+
 // Split oyun sonucunu hesapla
 const handleSplitEnd = async (game, userId) => {
     const dealerValue = calculateHandValue(game.dealerCards);
     const mainHandValue = calculateHandValue(game.playerCards);
     const splitHandValue = calculateHandValue(game.splitCards);
 
-    game.status = determineWinner(game.playerCards, game.dealerCards);
-    game.splitStatus = determineWinner(game.splitCards, game.dealerCards);
+    // Ana el sonucunu belirle
+    if (game.mainHandStatus === 'dealer_won') {
+        game.status = 'dealer_won';
+    } else if (game.mainHandStatus === 'stand') {
+        game.status = determineWinner(game.playerCards, game.dealerCards);
+    }
+
+    // Split el sonucunu belirle
+    if (game.splitHandStatus === 'dealer_won') {
+        game.splitStatus = 'dealer_won';
+    } else if (game.splitHandStatus === 'stand') {
+        game.splitStatus = determineWinner(game.splitCards, game.dealerCards);
+    }
 
     const user = await User.findById(userId);
     user.totalGames += 2; // Split olduğu için 2 el sayılır
+    user.lastBetAmount = game.currentBet;
 
     // Ana el için kazanç hesapla
     if (game.status === 'player_won') {
@@ -225,21 +261,6 @@ const handleSplitEnd = async (game, userId) => {
         user.gamesWon += 1;
     } else if (game.splitStatus === 'push') {
         user.chips += game.splitBet;
-    }
-
-    await user.save();
-};
-
-// Normal oyun sonucunu hesapla
-const handleGameEnd = async (game, userId) => {
-    const user = await User.findById(userId);
-    user.totalGames += 1;
-
-    if (game.status === 'player_won') {
-        user.chips += game.currentBet * 2;
-        user.gamesWon += 1;
-    } else if (game.status === 'push') {
-        user.chips += game.currentBet;
     }
 
     await user.save();

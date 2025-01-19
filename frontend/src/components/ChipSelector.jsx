@@ -1,7 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const ChipSelector = ({ maxChips, onBetConfirm }) => {
+const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
   const [selectedChips, setSelectedChips] = useState([]);
+
+  useEffect(() => {
+    // Varsayılan bahis miktarını ayarla
+    if (defaultBet > 0 && defaultBet <= maxChips) {
+      const chips = [];
+      let remainingBet = defaultBet;
+
+      // Büyükten küçüğe chip değerlerini kullanarak bahisi oluştur
+      chipValues.sort((a, b) => b.value - a.value).forEach(chip => {
+        while (remainingBet >= chip.value && chips.length < 10) {
+          chips.push(chip);
+          remainingBet -= chip.value;
+        }
+      });
+
+      setSelectedChips(chips);
+    }
+  }, [defaultBet, maxChips]);
 
   const chipValues = [
     { value: 500, image: '/img/chips/chip-500.png' },

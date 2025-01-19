@@ -183,7 +183,11 @@ function App() {
           ) : showScores ? (
             <ScoreBoard />
           ) : !game ? (
-            <BetForm onStartGame={startGame} currentChips={user.chips} />
+            <BetForm 
+              onStartGame={startGame} 
+              currentChips={user.chips}
+              lastBetAmount={user.lastBetAmount} 
+            />
           ) : (
             <GameTable 
               game={game} 

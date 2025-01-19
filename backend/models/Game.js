@@ -32,6 +32,16 @@ const gameSchema = new mongoose.Schema({
         enum: ['active', 'player_won', 'dealer_won', 'push', 'split_active'],
         default: 'active'
     },
+    mainHandStatus: {
+        type: String,
+        enum: ['active', 'player_won', 'dealer_won', 'push', 'stand'],
+        default: 'active'
+    },
+    splitHandStatus: {
+        type: String,
+        enum: ['active', 'player_won', 'dealer_won', 'push', 'stand'],
+        default: 'active'
+    },
     splitStatus: {
         type: String,
         enum: ['none', 'active', 'player_won', 'dealer_won', 'push'],
