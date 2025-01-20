@@ -39,6 +39,7 @@ const canSplit = (cards) => {
 const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) => {
   if (!game) return null;
   const [showWinMessage, setShowWinMessage] = useState(false);
+  const [showBetModal, setShowBetModal] = useState(false);
 
   const { playerCards, dealerCards, splitCards, status, currentBet, activeHand, splitStatus } = game;
   
@@ -65,6 +66,11 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
     }
   }, [status, isBlackjack, is21, isSplitBlackjack, isSplit21, activeHand, onStand]);
 
+  const handleBetConfirm = (bet) => {
+    setShowBetModal(false);
+    onStartGame(bet);
+  };
+
   // Sonuç mesajını belirle
   const getResultMessage = (handStatus, isMain = true) => {
     if ((status === 'active' || status === 'split_active') && 
@@ -84,9 +90,9 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
   };
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto flex gap-8">
+    <div className="w-full max-w-[1920px] mx-auto">
       {/* Ana Oyun Masası */}
-      <div className="flex-1 min-h-[600px] p-12 rounded-xl bg-table-green mb-8">
+      <div className="min-h-[600px] p-12 rounded-xl bg-table-green mb-8">
         {/* Krupiye Kartları */}
         <div className="mb-20 text-center">
           <div className="flex flex-col items-center mb-8">
@@ -157,7 +163,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
           <div className="flex justify-center items-center gap-4">
             {((status === 'active' && !isBlackjack && !is21) || 
               (status === 'split_active' && activeHand === 'main' && !isBlackjack && !is21) ||
-              (status === 'split_active' && activeHand === 'split' && !isSplitBlackjack && !isSplit21)) && (
+              (status === 'split_active' && activeHand === 'split' && !isSplitBlackjack && !isSplit21)) ? (
               <>
                 <button 
                   onClick={onHit}
@@ -180,21 +186,39 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
                   </button>
                 )}
               </>
+            ) : (
+              <button
+                onClick={() => setShowBetModal(true)}
+                className="game-button px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-500/30"
+              >
+                Yeni El Başlat
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Sağ Taraf - Bahis Bölümü */}
-      {status !== 'active' && status !== 'split_active' && (
-        <div className="w-96 bg-gray-800/50 rounded-xl p-6 h-fit sticky top-8">
-          <h3 className="text-2xl font-bold text-yellow-500 font-serif tracking-wider mb-6 text-center">
-            Yeni El
-          </h3>
-          <ChipSelector
-            maxChips={chips}
-            onBetConfirm={onStartGame}
-          />
+      {/* Bahis Modal */}
+      {showBetModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-xl shadow-2xl border border-yellow-500/30 max-w-2xl w-full mx-4 animate-fadeIn">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-yellow-500 font-serif">
+                Bahis Miktarını Seçin
+              </h2>
+              <button
+                onClick={() => setShowBetModal(false)}
+                className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                Geri Dön
+              </button>
+            </div>
+            <ChipSelector
+              maxChips={chips}
+              onBetConfirm={handleBetConfirm}
+              defaultBet={user?.lastBetAmount || 10}
+            />
+          </div>
         </div>
       )}
     </div>
