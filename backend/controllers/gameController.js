@@ -1,289 +1,329 @@
 const Game = require('../models/Game');
+const Room = require('../models/Room');
 const User = require('../models/User');
 const { createDeck, calculateHandValue, determineWinner } = require('../utils/gameLogic');
 
-// Yeni oyun başlat
-const startGame = async (req, res) => {
-    try {
-        const { bet } = req.body;
-        const userId = req.user.userId;
-        
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+const gameController = {
+    // Bahis koy
+    placeBet: async (req, res) => {
+        try {
+            const { roomId } = req.params;
+            const { bet } = req.body;
+            const userId = req.user.userId;
+
+            const room = await Room.findById(roomId);
+            if (!room) {
+                return res.status(404).json({ message: 'Oda bulunamadı' });
+            }
+
+            // Oyuncuyu bul
+            const player = room.currentPlayers.find(p => p.userId.toString() === userId);
+            if (!player) {
+                return res.status(400).json({ message: 'Bu odada değilsiniz' });
+            }
+
+            // Bahis kontrolü
+            if (bet < room.minBet) {
+                return res.status(400).json({ message: `Minimum bahis ${room.minBet} chip olmalıdır` });
+            }
+
+            const user = await User.findById(userId);
+            if (!user || user.chips < bet) {
+                return res.status(400).json({ message: 'Yetersiz bakiye' });
+            }
+
+            // Mevcut oyunu bul veya yeni oyun oluştur
+            let game = await Game.findOne({ room: roomId, status: 'betting' });
+            if (!game) {
+                game = new Game({
+                    room: roomId,
+                    players: [],
+                    dealerHand: [],
+                    deck: createDeck()
+                });
+            }
+
+            // Oyuncuyu oyuna ekle
+            const playerIndex = game.players.findIndex(p => p.playerId.toString() === userId);
+            if (playerIndex === -1) {
+                game.players.push({
+                    playerId: userId,
+                    bet,
+                    hand: []
+                });
+            } else {
+                game.players[playerIndex].bet = bet;
+            }
+
+            // Kullanıcının chip'lerini güncelle
+            user.chips -= bet;
+            await user.save();
+
+            await game.save();
+
+            // Socket.io ile diğer oyunculara bildir
+            req.io.to(roomId).emit('gameUpdate', game);
+
+            res.json(game);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
         }
+    },
 
-        if (!bet || bet < 10) {
-            return res.status(400).json({ message: 'Minimum bahis 10 chip olmalıdır' });
+    // Kart çek
+    hit: async (req, res) => {
+        try {
+            const { gameId, roomId } = req.params;
+            const userId = req.user.userId;
+
+            let game;
+            if (gameId) {
+                // Tek oyunculu mod
+                game = await Game.findById(gameId);
+                if (!game) {
+                    return res.status(404).json({ message: 'Oyun bulunamadı' });
+                }
+                
+                // Oyuncuyu kontrol et
+                const player = game.players[0];
+                if (player.playerId.toString() !== userId) {
+                    return res.status(403).json({ message: 'Bu oyuna erişim izniniz yok' });
+                }
+
+                if (player.status !== 'playing') {
+                    return res.status(400).json({ message: 'Kart çekemezsiniz' });
+                }
+
+                // Kart çek
+                const card = game.deck.pop();
+                player.hand.push(card);
+
+                // El değerini kontrol et
+                const handValue = calculateHandValue(player.hand);
+                if (handValue > 21) {
+                    player.status = 'bust';
+                    await game.save();
+                    return res.json(game);
+                }
+            } else {
+                // Çok oyunculu mod
+                game = await Game.findOne({ room: roomId, status: 'playing' });
+                if (!game) {
+                    return res.status(404).json({ message: 'Aktif oyun bulunamadı' });
+                }
+
+                // Sıra kontrolü
+                const currentPlayer = game.players[game.currentPlayerIndex];
+                if (currentPlayer.playerId.toString() !== userId) {
+                    return res.status(400).json({ message: 'Sıra sizde değil' });
+                }
+
+                // Kart çek
+                const card = game.deck.pop();
+                currentPlayer.hand.push(card);
+
+                // El değerini kontrol et
+                const handValue = calculateHandValue(currentPlayer.hand);
+                if (handValue > 21) {
+                    currentPlayer.status = 'bust';
+                    await game.nextPlayer();
+                }
+            }
+
+            await game.save();
+            res.json(game);
+        } catch (error) {
+            console.error('Kart çekme hatası:', error);
+            res.status(500).json({ message: error.message });
         }
+    },
 
-        if (bet > user.chips) {
-            return res.status(400).json({ message: 'Yetersiz bakiye' });
-        }
+    // Dur
+    stand: async (req, res) => {
+        try {
+            const { gameId, roomId } = req.params;
+            const userId = req.user.userId;
 
-        const deck = createDeck();
-        const playerCards = [deck.pop(), deck.pop()];
-        const dealerCards = [deck.pop(), deck.pop()];
+            let game;
+            if (gameId) {
+                // Tek oyunculu mod
+                game = await Game.findById(gameId);
+                if (!game) {
+                    return res.status(404).json({ message: 'Oyun bulunamadı' });
+                }
 
-        user.chips -= bet;
-        await user.save();
+                // Oyuncuyu kontrol et
+                const player = game.players[0];
+                if (player.playerId.toString() !== userId) {
+                    return res.status(403).json({ message: 'Bu oyuna erişim izniniz yok' });
+                }
 
-        const game = await Game.create({
-            userId,
-            playerCards,
-            dealerCards,
-            currentBet: bet
-        });
+                if (player.status !== 'playing') {
+                    return res.status(400).json({ message: 'Stand yapamazsınız' });
+                }
 
-        res.status(201).json({
-            game,
-            userChips: user.chips
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+                // Oyuncunun durumunu güncelle
+                player.status = 'stand';
 
-// Split yap
-const split = async (req, res) => {
-    try {
-        const { gameId } = req.params;
-        const userId = req.user.userId;
+                // Krupiye oyunu
+                while (calculateHandValue(game.dealerHand) < 17) {
+                    game.dealerHand.push(game.deck.pop());
+                }
 
-        const game = await Game.findOne({ _id: gameId, userId });
-        if (!game) {
-            return res.status(404).json({ message: 'Oyun bulunamadı' });
-        }
+                // Sonucu belirle
+                const playerValue = calculateHandValue(player.hand);
+                const dealerValue = calculateHandValue(game.dealerHand);
 
-        if (game.status !== 'active') {
-            return res.status(400).json({ message: 'Bu oyun aktif değil' });
-        }
-
-        // Split için kart kontrolü
-        if (game.playerCards.length !== 2 || 
-            game.playerCards[0].split('_')[0] !== game.playerCards[1].split('_')[0]) {
-            return res.status(400).json({ message: 'Bu kartlar split edilemez' });
-        }
-
-        const user = await User.findById(userId);
-        if (user.chips < game.currentBet) {
-            return res.status(400).json({ message: 'Split için yeterli chip yok' });
-        }
-
-        // Split işlemi
-        const deck = createDeck();
-        const splitCard = game.playerCards.pop();
-        game.splitCards = [splitCard];
-        game.splitBet = game.currentBet;
-        
-        // Her ele birer kart ekle
-        game.playerCards.push(deck.pop());
-        game.splitCards.push(deck.pop());
-        
-        // Kullanıcının chip'lerini güncelle
-        user.chips -= game.currentBet;
-        await user.save();
-
-        game.status = 'split_active';
-        game.mainHandStatus = 'active';
-        game.splitHandStatus = 'active';
-        game.activeHand = 'main';
-        await game.save();
-
-        res.json({
-            game,
-            userChips: user.chips
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// Kart çek
-const hit = async (req, res) => {
-    try {
-        const { gameId } = req.params;
-        const userId = req.user.userId;
-
-        const game = await Game.findOne({ _id: gameId, userId });
-        if (!game) {
-            return res.status(404).json({ message: 'Oyun bulunamadı' });
-        }
-
-        if (game.status !== 'active' && game.status !== 'split_active') {
-            return res.status(400).json({ message: 'Bu oyun aktif değil' });
-        }
-
-        const deck = createDeck();
-        const activeCards = game.activeHand === 'main' ? game.playerCards : game.splitCards;
-        activeCards.push(deck.pop());
-
-        // El değerini kontrol et
-        const handValue = calculateHandValue(activeCards);
-        if (handValue > 21) {
-            if (game.status === 'split_active') {
-                if (game.activeHand === 'main') {
-                    game.status = 'split_active';
-                    game.mainHandStatus = 'dealer_won';
-                    game.activeHand = 'split';
+                if (dealerValue > 21 || playerValue > dealerValue) {
+                    player.status = 'won';
+                    // Kazancı hesapla ve kullanıcıya ekle
+                    const user = await User.findById(userId);
+                    user.chips += player.bet * 2; // Bahis + kazanç
+                    await user.save();
+                } else if (dealerValue > playerValue) {
+                    player.status = 'lost';
                 } else {
-                    game.splitHandStatus = 'dealer_won';
-                    await handleSplitEnd(game, userId);
+                    player.status = 'push';
+                    // Beraberlikte bahsi geri ver
+                    const user = await User.findById(userId);
+                    user.chips += player.bet;
+                    await user.save();
                 }
+
+                game.status = 'finished';
             } else {
-                game.status = 'dealer_won';
-                const user = await User.findById(userId);
-                user.totalGames += 1;
-                await user.save();
-            }
-        }
-
-        if (game.activeHand === 'main') {
-            game.playerCards = activeCards;
-        } else {
-            game.splitCards = activeCards;
-        }
-
-        await game.save();
-        res.json({
-            game,
-            userChips: (await User.findById(userId)).chips
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-// Dur
-const stand = async (req, res) => {
-    try {
-        const { gameId } = req.params;
-        const userId = req.user.userId;
-
-        const game = await Game.findOne({ _id: gameId, userId });
-        if (!game) {
-            return res.status(404).json({ message: 'Oyun bulunamadı' });
-        }
-
-        if (game.status !== 'active' && game.status !== 'split_active') {
-            return res.status(400).json({ message: 'Bu oyun aktif değil' });
-        }
-
-        const deck = createDeck();
-
-        // Split durumunda ve ilk el ise
-        if (game.status === 'split_active') {
-            if (game.activeHand === 'main') {
-                game.mainHandStatus = 'stand';
-                game.activeHand = 'split';
-                await game.save();
-                return res.json({ game });
-            } else {
-                game.splitHandStatus = 'stand';
-                // Krupiye için kart çek
-                while (calculateHandValue(game.dealerCards) < 17) {
-                    game.dealerCards.push(deck.pop());
+                // Çok oyunculu mod
+                game = await Game.findOne({ room: roomId, status: 'playing' });
+                if (!game) {
+                    return res.status(404).json({ message: 'Aktif oyun bulunamadı' });
                 }
-                await handleSplitEnd(game, userId);
+
+                // Sıra kontrolü
+                const currentPlayer = game.players[game.currentPlayerIndex];
+                if (currentPlayer.playerId.toString() !== userId) {
+                    return res.status(400).json({ message: 'Sıra sizde değil' });
+                }
+
+                currentPlayer.status = 'stand';
+                await game.nextPlayer();
             }
-        } else {
-            // Krupiye için kart çek
-            while (calculateHandValue(game.dealerCards) < 17) {
-                game.dealerCards.push(deck.pop());
-            }
-            game.status = determineWinner(game.playerCards, game.dealerCards);
-            await handleGameEnd(game, userId);
+
+            await game.save();
+            res.json(game);
+        } catch (error) {
+            console.error('Stand hatası:', error);
+            res.status(500).json({ message: error.message });
         }
+    },
 
-        await game.save();
-        const updatedUser = await User.findById(userId);
-        
-        res.json({
-            game,
-            userChips: updatedUser.chips
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    // Oyunu başlat
+    startGame: async (req, res) => {
+        try {
+            const { roomId } = req.params;
+            const userId = req.user.userId;
+
+            const room = await Room.findById(roomId);
+            if (!room) {
+                return res.status(404).json({ message: 'Oda bulunamadı' });
+            }
+
+            // Owner kontrolü
+            const isOwner = room.currentPlayers.find(
+                p => p.userId.toString() === userId
+            )?.isOwner;
+
+            if (!isOwner) {
+                return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+            }
+
+            const game = await Game.findOne({ room: roomId, status: 'betting' });
+            if (!game || game.players.length === 0) {
+                return res.status(400).json({ message: 'Oyun başlatılamaz' });
+            }
+
+            // Tüm oyuncular bahis koymuş mu kontrol et
+            if (game.players.some(p => p.bet === 0)) {
+                return res.status(400).json({ message: 'Tüm oyuncular bahis koymadan oyun başlatılamaz' });
+            }
+
+            await game.startGame();
+
+            // Socket.io ile diğer oyunculara bildir
+            req.io.to(roomId).emit('gameUpdate', game);
+            req.io.to(roomId).emit('turnChange', 1, 30); // İlk oyuncunun sırası, 30 saniye
+
+            res.json(game);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    },
+
+    // Tek oyunculu oyun başlat
+    startSinglePlayerGame: async (req, res) => {
+        try {
+            const { bet } = req.body;
+            const userId = req.user.userId;
+
+            // Kullanıcıyı kontrol et
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+            }
+
+            // Bahis kontrolü
+            if (bet < 10 || bet > user.chips) {
+                return res.status(400).json({ message: 'Geçersiz bahis miktarı' });
+            }
+
+            // Yeni oyun oluştur
+            const game = new Game({
+                gameType: 'single',
+                players: [{
+                    playerId: userId,
+                    hand: [],
+                    bet: bet,
+                    status: 'playing'
+                }],
+                dealerHand: [],
+                dealerStatus: 'waiting',
+                status: 'playing',
+                deck: createDeck()
+            });
+
+            // Desteyi karıştır
+            game.deck = game.deck.sort(() => Math.random() - 0.5);
+
+            // Başlangıç kartlarını dağıt
+            game.players[0].hand = [game.deck.pop(), game.deck.pop()];
+            game.dealerHand = [game.deck.pop(), game.deck.pop()];
+
+            // Kullanıcının chip'lerini güncelle
+            user.chips -= bet;
+            user.lastBetAmount = bet;
+            await user.save();
+
+            await game.save();
+
+            res.json(game);
+        } catch (error) {
+            console.error('Oyun başlatma hatası:', error);
+            res.status(500).json({ message: error.message });
+        }
+    },
+
+    // Skor tablosu
+    getScores: async (req, res) => {
+        try {
+            const users = await User.find()
+                .sort({ chips: -1 })
+                .limit(10)
+                .select('username chips gamesWon totalGames');
+            
+            res.json(users);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
     }
 };
 
-// Normal oyun sonucunu hesapla
-const handleGameEnd = async (game, userId) => {
-    const user = await User.findById(userId);
-    user.totalGames += 1;
-    user.lastBetAmount = game.currentBet;
-
-    if (game.status === 'player_won') {
-        user.chips += game.currentBet * 2;
-        user.gamesWon += 1;
-    } else if (game.status === 'push') {
-        user.chips += game.currentBet;
-    }
-
-    await user.save();
-};
-
-// Split oyun sonucunu hesapla
-const handleSplitEnd = async (game, userId) => {
-    const dealerValue = calculateHandValue(game.dealerCards);
-    const mainHandValue = calculateHandValue(game.playerCards);
-    const splitHandValue = calculateHandValue(game.splitCards);
-
-    // Ana el sonucunu belirle
-    if (game.mainHandStatus === 'dealer_won') {
-        game.status = 'dealer_won';
-    } else if (game.mainHandStatus === 'stand') {
-        game.status = determineWinner(game.playerCards, game.dealerCards);
-    }
-
-    // Split el sonucunu belirle
-    if (game.splitHandStatus === 'dealer_won') {
-        game.splitStatus = 'dealer_won';
-    } else if (game.splitHandStatus === 'stand') {
-        game.splitStatus = determineWinner(game.splitCards, game.dealerCards);
-    }
-
-    const user = await User.findById(userId);
-    user.totalGames += 2; // Split olduğu için 2 el sayılır
-    user.lastBetAmount = game.currentBet;
-
-    // Ana el için kazanç hesapla
-    if (game.status === 'player_won') {
-        user.chips += game.currentBet * 2;
-        user.gamesWon += 1;
-    } else if (game.status === 'push') {
-        user.chips += game.currentBet;
-    }
-
-    // Split el için kazanç hesapla
-    if (game.splitStatus === 'player_won') {
-        user.chips += game.splitBet * 2;
-        user.gamesWon += 1;
-    } else if (game.splitStatus === 'push') {
-        user.chips += game.splitBet;
-    }
-
-    await user.save();
-};
-
-// Skor tablosu
-const getScores = async (req, res) => {
-    try {
-        const users = await User.find()
-            .sort({ chips: -1 })
-            .limit(10)
-            .select('username chips gamesWon totalGames');
-        
-        res.json(users);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-module.exports = {
-    startGame,
-    hit,
-    stand,
-    split,
-    getScores
-}; 
+module.exports = gameController; 

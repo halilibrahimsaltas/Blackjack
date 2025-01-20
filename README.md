@@ -1,162 +1,115 @@
 # Blackjack Oyunu 🎮
 
-## Proje Hakkında
+Modern web teknolojileri ile geliştirilmiş, tek ve çok oyunculu modları destekleyen bir Blackjack oyunu.
 
-Bu proje, MERN stack (MongoDB, Express.js, React, Node.js) kullanılarak geliştirilmiş tek oyunculu bir Blackjack oyunudur. Oyuncular, bilgisayara karşı klasik Blackjack kurallarıyla oynayabilir ve oyun istatistiklerini görebilirler.
+## Özellikler ✨
 
-## Özellikler 🌟
-
-- Kullanıcı kaydı ve girişi
+- Tek oyunculu ve çok oyunculu modlar
+- Gerçek zamanlı oyun deneyimi
+- Oda sistemi (maksimum 10 oda, her odada 1-4 oyuncu)
 - JWT tabanlı kimlik doğrulama
-- Otomatik 21 kazanma sistemi
-- Gerçek zamanlı oyun mantığı
-- Kişisel oyun istatistikleri
-- Responsive tasarım
-- Gelişmiş bahis sistemi
-- Animasyonlu bildirimler
+- Skor tablosu ve istatistikler
+- Modern ve responsive tasarım
 
-## Teknoloji Stack'i 🛠
+## Teknolojiler 🛠
 
 ### Backend
 
 - Node.js
 - Express.js
-- MongoDB
-- Mongoose
-- JWT (JSON Web Tokens)
-- Bcrypt.js
+- MongoDB (Mongoose)
+- Socket.io
+- JWT Authentication
+- Cors
 
 ### Frontend
 
 - React (Vite)
+- React Router DOM
 - Axios
+- Socket.io Client
 - Tailwind CSS
-- React Icons
+- React Hot Toast
 
-### Development Tools
+## Kurulum 🚀
 
-- ESLint
-- Prettier
-- Nodemon
-- Concurrently
-
-## Kurulum 📦
-
-### Gereksinimler
-
-- Node.js (v14 veya üzeri)
-- MongoDB
-- npm veya yarn
-
-### Kurulum Adımları
-
-1. Projeyi klonlayın
+1. Depoyu klonlayın:
 
 ```bash
-git clone https://github.com/halilibrahimsaltas/blackjack.git
+git clone https://github.com/kullaniciadi/blackjack.git
 cd blackjack
 ```
 
-2. Backend bağımlılıklarını yükleyin
+2. Backend kurulumu:
 
 ```bash
 cd backend
 npm install
 ```
 
-3. Frontend bağımlılıklarını yükleyin
+3. Frontend kurulumu:
 
 ```bash
 cd frontend
 npm install
 ```
 
-4. `.env` dosyasını oluşturun
+4. `.env` dosyasını oluşturun:
 
 ```env
 MONGODB_URI=your_mongodb_uri
+JWT_SECRET=your_jwt_secret
 PORT=5000
-JWT_SECRET=your_jwt_secret_key
 ```
 
-5. Uygulamayı başlatın
+5. Uygulamayı başlatın:
+
+Backend:
 
 ```bash
-# Backend için
 cd backend
-npm run dev
+npm start
+```
 
-# Frontend için (yeni terminal)
+Frontend:
+
+```bash
 cd frontend
 npm run dev
 ```
 
-## Proje Yapısı 📁
+## Oyun Modları 🎲
 
-```
-blackjack/
-├── backend/
-│   ├── config/
-│   ├── controllers/
-│   ├── models/
-│   ├── routes/
-│   ├── utils/
-│   └── server.js
-├── frontend/
-│   ├── public/
-│   │   └── img/
-│   │       └── cards/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   └── App.jsx
-│   └── index.html
-└── README.md
-```
+### Tek Oyunculu
 
-## API Endpoints 🔌
+- Hızlı oyun deneyimi
+- Direkt oyun başlatma
+- Basitleştirilmiş arayüz
 
-### Kullanıcı İşlemleri
+### Çok Oyunculu
 
-- POST /api/auth/register - Yeni kullanıcı kaydı
-- POST /api/auth/login - Kullanıcı girişi
-- GET /api/auth/profile - Kullanıcı profili
+- Oda tabanlı sistem
+- Gerçek zamanlı etkileşim
+- Sıralı oyun sistemi
+- Oda sahibi kontrolü
 
-### Oyun İşlemleri
+## API Endpoints 🌐
 
-- POST /api/game/start - Yeni oyun başlatma
-- POST /api/game/hit - Kart çekme
-- POST /api/game/stand - Durma
-- GET /api/game/scores - En yüksek skorlar
-
-## Oyun Kuralları 📋
-
-1. Oyun 21'e en yakın olmaya çalışmak üzerine kuruludur
-2. As kartı 1 veya 11 olarak sayılabilir
-3. J, Q, K kartları 10 değerindedir
-4. Oyuncu 21'i geçerse kaybeder
-5. Krupiye 17 veya üzerinde durmak zorundadır
-6. Oyuna 1000 chip ile başlanır
-7. Minimum bahis 10 chip'tir
-8. 21'e ulaşıldığında otomatik kazanma
-9. Her el sonunda yeni bahis imkanı
-10. Split özelliği:
-    - İlk iki kart aynı değerde ise split yapılabilir
-    - Split için ilk bahis kadar ek chip gerekir
-    - Her el için ayrı ayrı oynanır ve kazanç hesaplanır
-    - Split edilen eller için ayrı ayrı kart çekilebilir
-    - Her el bağımsız olarak kazanabilir veya kaybedebilir
+Detaylı API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına bakın.
 
 ## Katkıda Bulunma 🤝
 
-1. Bu repository'yi fork edin
-2. Feature branch'i oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'feat: Add amazing feature'`)
-4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
+1. Bu depoyu fork edin
+2. Yeni bir branch oluşturun (`git checkout -b feature/amazing`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Harika özellik eklendi'`)
+4. Branch'inizi push edin (`git push origin feature/amazing`)
 5. Pull Request oluşturun
 
 ## Lisans 📝
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](./LICENSE) dosyasına bakın.
+
+## İletişim 📧
+
+- GitHub: [@kullaniciadi](https://github.com/kullaniciadi)
+- Email: ornek@email.com
