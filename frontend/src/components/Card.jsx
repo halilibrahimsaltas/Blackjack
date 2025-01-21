@@ -1,5 +1,5 @@
-const Card = ({ card, isHidden = false }) => {
-  const imagePath = isHidden 
+const Card = ({ card }) => {
+  const imagePath = card === 'back'
     ? '/img/cards/back.png'
     : `/img/cards/${card}.png`;
 
@@ -7,8 +7,10 @@ const Card = ({ card, isHidden = false }) => {
     <div className="card bg-white">
       <img 
         src={imagePath} 
-        alt={isHidden ? 'Hidden Card' : card} 
-        className="w-full h-full object-contain rounded-lg p-1"
+        alt={card === 'back' ? 'Hidden Card' : card} 
+        className={`w-full h-full object-contain rounded-lg ${
+          card === 'back' ? 'p-0' : 'p-1'
+        }`}
       />
     </div>
   );

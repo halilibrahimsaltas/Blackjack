@@ -59,8 +59,8 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
     <div className="w-full max-w-2xl mx-auto">
       {/* Mevcut Bakiye */}
       <div className="mb-6 text-center">
-        <p className="text-lg text-gray-400 font-mono">
-          Bakiye: <span className="text-yellow-500 font-bold">{maxChips}</span>
+        <p className="text-lg text-yellow-300 font-mono">
+          Bakiye: <span className="text-yellow-400 font-bold">{maxChips}</span>
         </p>
       </div>
 
@@ -84,7 +84,7 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
 
       {/* Bahis Alanı */}
       <div className="w-72 h-40 mx-auto rounded-xl 
-        bg-gradient-to-br from-gray-800 to-gray-900
+        bg-gradient-to-br from-blue-900/50 to-blue-950/50
         border-2 border-yellow-500/30 flex flex-col items-center justify-center
         transition-all duration-300 relative overflow-hidden
         shadow-lg hover:shadow-xl mb-8">
@@ -168,7 +168,7 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
       </div>
 
       {/* Bilgi Mesajı */}
-      <div className="mt-4 text-center text-gray-500 text-sm">
+      <div className="mt-4 text-center text-yellow-300/80 text-sm">
         {totalBet < 5 ? (
           <p>Minimum bahis: 5</p>
         ) : totalBet > maxChips ? (

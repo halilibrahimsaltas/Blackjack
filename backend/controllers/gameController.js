@@ -102,10 +102,8 @@ const gameController = {
                 const handValue = calculateHandValue(player.hand);
                 if (handValue > 21) {
                     player.status = 'bust';
-                    await game.save();
-                    return res.json(game);
                 }
-            } else {
+            } else if (roomId) {
                 // Çok oyunculu mod
                 game = await Game.findOne({ room: roomId, status: 'playing' });
                 if (!game) {
@@ -114,7 +112,7 @@ const gameController = {
 
                 // Sıra kontrolü
                 const currentPlayer = game.players[game.currentPlayerIndex];
-                if (currentPlayer.playerId.toString() !== userId) {
+                if (!currentPlayer || currentPlayer.playerId.toString() !== userId) {
                     return res.status(400).json({ message: 'Sıra sizde değil' });
                 }
 
@@ -128,6 +126,8 @@ const gameController = {
                     currentPlayer.status = 'bust';
                     await game.nextPlayer();
                 }
+            } else {
+                return res.status(400).json({ message: 'Geçersiz istek' });
             }
 
             await game.save();
@@ -147,19 +147,22 @@ const gameController = {
             let game;
             if (gameId) {
                 // Tek oyunculu mod
+                console.log('Tek oyunculu stand - GameID:', gameId);
                 game = await Game.findById(gameId);
                 if (!game) {
+                    console.log('Oyun bulunamadı');
                     return res.status(404).json({ message: 'Oyun bulunamadı' });
                 }
 
                 // Oyuncuyu kontrol et
                 const player = game.players[0];
-                if (player.playerId.toString() !== userId) {
+                if (!player || player.playerId.toString() !== userId) {
+                    console.log('Erişim hatası - PlayerID:', player?.playerId, 'UserID:', userId);
                     return res.status(403).json({ message: 'Bu oyuna erişim izniniz yok' });
                 }
 
                 if (player.status !== 'playing') {
-                    return res.status(400).json({ message: 'Stand yapamazsınız' });
+                    return res.status(400).json({ message: 'Dur diyemezsiniz' });
                 }
 
                 // Oyuncunun durumunu güncelle
@@ -170,45 +173,75 @@ const gameController = {
                     game.dealerHand.push(game.deck.pop());
                 }
 
-                // Sonucu belirle
+                // Sonuçları hesapla
                 const playerValue = calculateHandValue(player.hand);
                 const dealerValue = calculateHandValue(game.dealerHand);
 
-                if (dealerValue > 21 || playerValue > dealerValue) {
+                if (dealerValue > 21) {
                     player.status = 'won';
-                    // Kazancı hesapla ve kullanıcıya ekle
-                    const user = await User.findById(userId);
-                    user.chips += player.bet * 2; // Bahis + kazanç
-                    await user.save();
                 } else if (dealerValue > playerValue) {
                     player.status = 'lost';
+                } else if (dealerValue < playerValue) {
+                    player.status = 'won';
                 } else {
                     player.status = 'push';
-                    // Beraberlikte bahsi geri ver
-                    const user = await User.findById(userId);
-                    user.chips += player.bet;
-                    await user.save();
                 }
 
                 game.status = 'finished';
-            } else {
+            } else if (roomId) {
                 // Çok oyunculu mod
+                console.log('Çok oyunculu stand - RoomID:', roomId);
                 game = await Game.findOne({ room: roomId, status: 'playing' });
                 if (!game) {
+                    console.log('Aktif oyun bulunamadı');
                     return res.status(404).json({ message: 'Aktif oyun bulunamadı' });
                 }
 
                 // Sıra kontrolü
                 const currentPlayer = game.players[game.currentPlayerIndex];
-                if (currentPlayer.playerId.toString() !== userId) {
+                if (!currentPlayer || currentPlayer.playerId.toString() !== userId) {
+                    console.log('Sıra hatası - CurrentPlayer:', currentPlayer?.playerId, 'UserID:', userId);
                     return res.status(400).json({ message: 'Sıra sizde değil' });
                 }
 
+                // Oyuncunun durumunu güncelle
                 currentPlayer.status = 'stand';
+
+                // Sıradaki oyuncuya geç
                 await game.nextPlayer();
+
+                // Tüm oyuncular bittiyse krupiye oyunu
+                if (game.currentPlayerIndex >= game.players.length) {
+                    while (calculateHandValue(game.dealerHand) < 17) {
+                        game.dealerHand.push(game.deck.pop());
+                    }
+
+                    // Sonuçları hesapla
+                    const dealerValue = calculateHandValue(game.dealerHand);
+                    const dealerBust = dealerValue > 21;
+
+                    game.players.forEach(player => {
+                        if (player.status === 'bust') return;
+
+                        const playerValue = calculateHandValue(player.hand);
+                        if (dealerBust || playerValue > dealerValue) {
+                            player.status = 'won';
+                        } else if (playerValue < dealerValue) {
+                            player.status = 'lost';
+                        } else {
+                            player.status = 'push';
+                        }
+                    });
+
+                    game.status = 'finished';
+                }
+            } else {
+                console.log('Geçersiz istek - Params:', req.params);
+                return res.status(400).json({ message: 'Geçersiz istek' });
             }
 
             await game.save();
+            console.log('Oyun güncellendi:', game._id);
             res.json(game);
         } catch (error) {
             console.error('Stand hatası:', error);
@@ -266,42 +299,32 @@ const gameController = {
 
             // Kullanıcıyı kontrol et
             const user = await User.findById(userId);
-            if (!user) {
-                return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
-            }
-
-            // Bahis kontrolü
-            if (bet < 10 || bet > user.chips) {
-                return res.status(400).json({ message: 'Geçersiz bahis miktarı' });
+            if (!user || user.chips < bet) {
+                return res.status(400).json({ message: 'Yetersiz bakiye' });
             }
 
             // Yeni oyun oluştur
             const game = new Game({
-                gameType: 'single',
                 players: [{
                     playerId: userId,
+                    bet,
                     hand: [],
-                    bet: bet,
                     status: 'playing'
                 }],
                 dealerHand: [],
-                dealerStatus: 'waiting',
-                status: 'playing',
-                deck: createDeck()
+                deck: createDeck(),
+                status: 'playing'
             });
 
-            // Desteyi karıştır
-            game.deck = game.deck.sort(() => Math.random() - 0.5);
-
-            // Başlangıç kartlarını dağıt
-            game.players[0].hand = [game.deck.pop(), game.deck.pop()];
-            game.dealerHand = [game.deck.pop(), game.deck.pop()];
+            // İlk kartları dağıt
+            game.players[0].hand.push(game.deck.pop(), game.deck.pop());
+            game.dealerHand.push(game.deck.pop(), game.deck.pop());
 
             // Kullanıcının chip'lerini güncelle
             user.chips -= bet;
             user.lastBetAmount = bet;
+            
             await user.save();
-
             await game.save();
 
             res.json(game);

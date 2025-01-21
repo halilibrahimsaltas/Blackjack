@@ -42,6 +42,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
   if (!game) return null;
   const [showWinMessage, setShowWinMessage] = useState(false);
   const [showBetModal, setShowBetModal] = useState(false);
+  const [autoWinMessage, setAutoWinMessage] = useState(false);
 
   // Oyuncu bilgilerini al
   const player = game.players[0];
@@ -56,32 +57,54 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
     : calculateHandValue(game.dealerHand);
 
   // Oyun durumunu kontrol et
-  const isGameOver = game.status === 'finished';
+  const isGameOver = game.status === 'finished' || playerStatus === 'bust' || playerStatus === 'lost' || playerStatus === 'won' || playerStatus === 'push' || playerStatus === 'blackjack';
   const canHit = playerStatus === 'playing';
   const canStand = playerStatus === 'playing';
   const canSplitHand = canSplit(playerHand) && chips >= currentBet;
 
   useEffect(() => {
-    if (isGameOver) {
-      setShowWinMessage(true);
-      const timer = setTimeout(() => {
-        setShowWinMessage(false);
-        setShowBetModal(true);
-      }, 2000);
-      return () => clearTimeout(timer);
+    // Oyuncu eli 21 olduğunda
+    if (playerValue === 21 && game.status === 'playing') {
+      setTimeout(() => {
+        setAutoWinMessage(true);
+        setTimeout(() => {
+          setAutoWinMessage(false);
+          if (onStand) onStand();
+        }, 1000);
+      }, 300);
     }
-  }, [isGameOver]);
+  }, [playerValue, game.status, onStand]);
+
+  useEffect(() => {
+    // Oyun bittiğinde veya oyuncu durumu değiştiğinde
+    if (isGameOver && !showWinMessage) {
+      console.log('Oyun durumu:', game.status, 'Oyuncu durumu:', playerStatus);
+      setTimeout(() => {
+        setShowWinMessage(true);
+        setTimeout(() => {
+          setShowWinMessage(false);
+        }, 1500);
+      }, 300);
+    }
+  }, [isGameOver, playerStatus]);
 
   const handleBetConfirm = (bet) => {
     setShowBetModal(false);
     onStartGame(bet);
   };
 
+  // Oyun durumunu konsola yazdır
+  console.log('Game Status:', game.status, 'Player Status:', playerStatus, 'IsGameOver:', isGameOver);
+
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between p-8 bg-green-800 rounded-lg">
+   
       {/* Krupiye Alanı */}
-      <div className="flex flex-col items-center mb-8">
-        <h3 className="text-white text-xl mb-4">Krupiye {isGameOver ? `(${dealerValue})` : ''}</h3>
+      <div className="flex flex-col items-center mb-8 mt-12">
+        <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
+          KRUPİYE {game.status === 'playing' && `(${calculateHandValue([game.dealerHand[0]])})`}
+          {game.status !== 'playing' && `(${dealerValue})`}
+        </h3>
         <div className="flex gap-4">
           {game.dealerHand.map((card, index) => (
             <Card 
@@ -94,8 +117,9 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
 
       {/* Oyuncu Alanı */}
       <div className="flex flex-col items-center">
-        <h3 className="text-white text-xl mb-4">
-          {user.username} ({playerValue}) - Bahis: {currentBet}
+        <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
+          {user.username.charAt(0).toUpperCase() + user.username.slice(1)} ({playerValue}) 
+          <span className="text-xl font-sans ml-3 text-yellow-300">- Bahis: {currentBet}</span>
         </h3>
         <div className="flex gap-4">
           {playerHand.map((card, index) => (
@@ -105,7 +129,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
       </div>
 
       {/* Kontrol Butonları */}
-      {game.status === 'playing' && (
+      {!isGameOver ? (
         <div className="flex gap-4 mt-8">
           <button
             onClick={onHit}
@@ -138,24 +162,56 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
             </button>
           )}
         </div>
+      ) : (
+        <div className="flex gap-4 mt-8">
+          <button
+            onClick={() => setShowBetModal(true)}
+            className="px-6 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
+          >
+            Yeni El
+          </button>
+        </div>
+      )}
+
+      {/* Otomatik Kazanma Mesajı */}
+      {autoWinMessage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 animate-fadeIn transition-all duration-300">
+          <div className="bg-[#111827]/80 backdrop-blur-sm p-8 rounded-lg text-2xl font-bold border-2 border-yellow-500/30 shadow-xl">
+            <div className="text-center">
+              <p className="text-yellow-400">21! Kazandınız! 🎯</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Kazanma/Kaybetme Mesajı */}
-      {showWinMessage && playerStatus !== 'waiting' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-8 rounded-lg text-2xl font-bold">
-            {playerStatus === 'won' && 'Kazandınız! 🎉'}
-            {playerStatus === 'lost' && 'Kaybettiniz 😢'}
-            {playerStatus === 'push' && 'Berabere 🤝'}
-            {playerStatus === 'blackjack' && 'Blackjack! 🎯'}
+      {showWinMessage && playerStatus !== 'waiting' && playerStatus !== 'playing' && !autoWinMessage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 animate-fadeIn transition-all duration-300">
+          <div className="bg-[#111827]/80 backdrop-blur-sm p-8 rounded-lg text-2xl font-bold border-2 border-yellow-500/30 shadow-xl">
+            <div className="text-center">
+              {playerStatus === 'won' && <p className="text-green-400">Kazandınız! 🎉</p>}
+              {playerStatus === 'lost' && <p className="text-red-400">Kaybettiniz 😢</p>}
+              {playerStatus === 'push' && <p className="text-yellow-400">Berabere 🤝</p>}
+              {playerStatus === 'blackjack' && <p className="text-yellow-400">Blackjack! 🎰</p>}
+              {playerStatus === 'bust' && <p className="text-red-400">Battınız! 💥</p>}
+            </div>
           </div>
         </div>
       )}
 
       {/* Bahis Modal */}
       {showBetModal && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-8 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 animate-fadeIn">
+          <div className="bg-[#111827] p-8 rounded-xl shadow-2xl border-2 border-yellow-500/30">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-yellow-500">Bahis Yap</h2>
+              <button
+                onClick={() => setShowBetModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
             <ChipSelector
               maxChips={chips}
               onBetConfirm={handleBetConfirm}

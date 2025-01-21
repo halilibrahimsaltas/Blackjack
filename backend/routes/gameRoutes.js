@@ -13,16 +13,16 @@ router.post('/bet/:roomId', auth, placeBet);
 router.post('/start/:roomId', auth, startGame);
 
 // Kart çek (tek oyunculu)
-router.post('/hit/:gameId', auth, hit);
+router.post('/hit/single/:gameId', auth, hit);
 
 // Kart çek (çok oyunculu)
-router.post('/hit/:roomId', auth, hit);
+router.post('/hit/multi/:roomId', auth, hit);
 
 // Dur (tek oyunculu)
-router.post('/stand/:gameId', auth, stand);
+router.post('/stand/single/:gameId', auth, stand);
 
 // Dur (çok oyunculu)
-router.post('/stand/:roomId', auth, stand);
+router.post('/stand/multi/:roomId', auth, stand);
 
 // Skor tablosu
 router.get('/scores', getScores);

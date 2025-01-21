@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import MultiplayerGameTable from '../components/MultiplayerGameTable';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 const TURN_TIME_LIMIT = 30; // saniye
 
@@ -83,12 +84,30 @@ const MultiplayerGame = ({ user }) => {
     socket?.emit('placeBet', roomId, amount);
   };
 
-  const handleHit = () => {
-    socket?.emit('hit', roomId);
+  const handleHit = async () => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/game/hit/multi/${roomId}`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      setGame(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Kart çekilirken bir hata oluştu');
+    }
   };
 
-  const handleStand = () => {
-    socket?.emit('stand', roomId);
+  const handleStand = async () => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/game/stand/multi/${roomId}`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      setGame(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'İşlem yapılırken bir hata oluştu');
+    }
   };
 
   if (!room || !game) {
