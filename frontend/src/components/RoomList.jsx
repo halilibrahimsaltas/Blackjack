@@ -1,25 +1,37 @@
 import { useState, useEffect } from 'react';
-import { FaLock, FaUnlock, FaUsers, FaPlay, FaPause } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { FaLock, FaUnlock, FaUsers, FaPlay, FaPause } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
-const RoomList = ({ user, onJoinRoom }) => {
+const API_URL = 'http://localhost:5000/api';
+
+const RoomList = ({ onRoomJoin }) => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [password, setPassword] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  // Odaları getir
   const fetchRooms = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/room/list', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/room/list`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      console.log('Odalar yüklendi:', response.data);
       setRooms(response.data);
+      setError(null);
     } catch (error) {
-      toast.error('Odalar yüklenirken bir hata oluştu');
       console.error('Odalar yüklenemedi:', error);
+      setError('Odalar yüklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -27,41 +39,46 @@ const RoomList = ({ user, onJoinRoom }) => {
 
   useEffect(() => {
     fetchRooms();
-    // Her 5 saniyede bir odaları güncelle
-    const interval = setInterval(fetchRooms, 5000);
+    // Her 10 saniyede bir oda listesini güncelle
+    const interval = setInterval(fetchRooms, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Odaya katıl
-  const handleJoinRoom = async (room) => {
-    if (room.password && !showPasswordModal) {
-      setSelectedRoom(room);
-      setShowPasswordModal(true);
-      return;
-    }
-
+  const handleJoinRoom = async (roomId) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:5000/api/room/join/${room._id}`,
-        { password: room.password ? password : null },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        `${API_URL}/room/join/${roomId}`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
-      toast.success('Odaya başarıyla katıldınız');
-      onJoinRoom(response.data);
+      console.log('Odaya katılma başarılı:', response.data);
+      onRoomJoin(roomId);
+      navigate(`/room/${roomId}`);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Odaya katılırken bir hata oluştu');
-    } finally {
-      setShowPasswordModal(false);
-      setPassword('');
-      setSelectedRoom(null);
+      console.error('Odaya katılma hatası:', error);
+      setError('Odaya katılırken bir hata oluştu');
     }
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-yellow-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-4">
+        {error}
       </div>
     );
   }
@@ -74,56 +91,53 @@ const RoomList = ({ user, onJoinRoom }) => {
       </div>
 
       {/* Oda Listesi */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {rooms.map((room) => (
-          <div
+          <div 
             key={room._id}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 shadow-lg border border-gray-700 hover:border-yellow-500/50 transition-all duration-300"
+            className="bg-[#1F2937] p-6 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all"
           >
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-white">{room.name}</h3>
-              {room.password ? (
-                <FaLock className="text-yellow-500" />
-              ) : (
-                <FaUnlock className="text-green-500" />
-              )}
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center text-gray-300">
-                <FaUsers className="mr-2" />
-                <span>{room.currentPlayers.length}/{room.maxPlayers} Oyuncu</span>
+              <div>
+                <h3 className="text-xl font-bold text-yellow-500 mb-2">
+                  Oda #{room._id.slice(-4)}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {room.players.length} / 4 Oyuncu
+                </p>
               </div>
-              <div className="flex items-center text-gray-300">
-                {room.status === 'waiting' ? (
-                  <FaPause className="mr-2 text-yellow-500" />
-                ) : (
-                  <FaPlay className="mr-2 text-green-500" />
-                )}
-                <span>
-                  {room.status === 'waiting' ? 'Bekliyor' : 'Oyunda'}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-yellow-500">
+                  Min: {room.minBet}
+                </span>
+                <span className="text-yellow-500/30">|</span>
+                <span className="text-sm font-medium text-yellow-500">
+                  Max: {room.maxBet}
                 </span>
               </div>
-              <div className="text-gray-300">
-                <span className="font-semibold">Oda Sahibi: </span>
-                {room.currentPlayers.find(p => p.isOwner)?.username}
-              </div>
-              <div className="text-gray-300">
-                <span className="font-semibold">Min. Bahis: </span>
-                {room.minBet} Chip
-              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
+              {room.players.map((player, index) => (
+                <div 
+                  key={index}
+                  className="px-3 py-1 rounded-full bg-yellow-500/10 text-sm text-yellow-500"
+                >
+                  {player.username}
+                </div>
+              ))}
             </div>
 
             <button
-              onClick={() => handleJoinRoom(room)}
-              disabled={room.status !== 'waiting' || room.currentPlayers.length >= room.maxPlayers}
-              className="w-full py-2 px-4 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+              onClick={() => handleJoinRoom(room._id)}
+              disabled={room.players.length >= 4}
+              className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${
+                room.players.length >= 4
+                  ? 'bg-gray-500 cursor-not-allowed'
+                  : 'bg-yellow-500 hover:bg-yellow-600'
+              }`}
             >
-              {room.status !== 'waiting'
-                ? 'Oyun Devam Ediyor'
-                : room.currentPlayers.length >= room.maxPlayers
-                ? 'Oda Dolu'
-                : 'Katıl'}
+              {room.players.length >= 4 ? 'Oda Dolu' : 'Katıl'}
             </button>
           </div>
         ))}

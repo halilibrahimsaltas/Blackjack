@@ -11,20 +11,44 @@ const GameModeSelect = () => {
   const [minBet, setMinBet] = useState(10);
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
 
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
+  const handleSinglePlayer = () => {
+    navigate('/game');
+  };
+
+  const handleCreateRoom = async () => {
     try {
-      const response = await axios.post(`${API_URL}/room/create`, {
-        name: roomName,
-        minBet,
-        isPrivate,
-        password: isPrivate ? password : undefined
-      });
-      navigate(`/room/${response.data.room._id}`);
+      setError(null);
+      const token = localStorage.getItem('token');
+      console.log('Oda oluşturma isteği gönderiliyor...');
+      
+      const response = await axios.post(
+        `${API_URL}/room/create`,
+        {
+          minBet: 10,
+          maxBet: 1000,
+          maxPlayers: 4,
+          isPrivate: false
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Oda başarıyla oluşturuldu:', response.data);
+      navigate(`/room/${response.data._id}`);
     } catch (error) {
-      console.error('Oda oluşturma hatası:', error);
+      console.error('Oda oluşturma hatası:', error.response || error);
+      setError(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
     }
+  };
+
+  const handleJoinRoom = () => {
+    navigate('/rooms');
   };
 
   return (
@@ -36,43 +60,46 @@ const GameModeSelect = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Tek Oyunculu */}
-          <button
-            onClick={() => navigate('/game')}
-            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
-              p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300
-              border border-blue-500/30 group"
-          >
-            <h2 className="text-2xl font-bold text-white mb-3">Tek Oyunculu</h2>
-            <p className="text-blue-200 text-sm">
-              Krupiyeye karşı klasik blackjack deneyimi
+          <div className="bg-[#1F2937] p-6 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
+            <h3 className="text-xl font-bold text-yellow-500 mb-4">Tek Oyunculu</h3>
+            <p className="text-gray-400 mb-6">
+              Krupiyeye karşı oyna ve yeteneklerini test et!
             </p>
-          </button>
+            <button
+              onClick={handleSinglePlayer}
+              className="w-full py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-medium transition-all"
+            >
+              Oyna
+            </button>
+          </div>
 
-          {/* Oda Listesi */}
-          <button
-            onClick={() => navigate('/rooms')}
-            className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800
-              p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300
-              border border-purple-500/30 group"
-          >
-            <h2 className="text-2xl font-bold text-white mb-3">Oda Listesi</h2>
-            <p className="text-purple-200 text-sm">
-              Mevcut çok oyunculu odalara katılın
+          {/* Oda Oluştur */}
+          <div className="bg-[#1F2937] p-6 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
+            <h3 className="text-xl font-bold text-yellow-500 mb-4">Oda Oluştur</h3>
+            <p className="text-gray-400 mb-6">
+              Arkadaşlarınla oynamak için yeni bir oda oluştur!
             </p>
-          </button>
+            <button
+              onClick={handleCreateRoom}
+              className="w-full py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-medium transition-all"
+            >
+              Oda Oluştur
+            </button>
+          </div>
 
-          {/* Oda Kur */}
-          <button
-            onClick={() => setShowCreateRoom(true)}
-            className="bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800
-              p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300
-              border border-green-500/30 group"
-          >
-            <h2 className="text-2xl font-bold text-white mb-3">Oda Kur</h2>
-            <p className="text-green-200 text-sm">
-              Kendi çok oyunculu odanızı oluşturun
+          {/* Odaya Katıl */}
+          <div className="bg-[#1F2937] p-6 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
+            <h3 className="text-xl font-bold text-yellow-500 mb-4">Odaya Katıl</h3>
+            <p className="text-gray-400 mb-6">
+              Mevcut bir odaya katıl ve çoklu oyunculu modda oyna!
             </p>
-          </button>
+            <button
+              onClick={handleJoinRoom}
+              className="w-full py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-medium transition-all"
+            >
+              Odaları Listele
+            </button>
+          </div>
         </div>
 
         {/* Oda Oluşturma Modal */}

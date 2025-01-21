@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 router.post('/create', auth, createRoom);
 
 // Odaları listele
-router.get('/', auth, getRooms);
+router.get('/list', auth, getRooms);
 
 // Odaya katıl
 router.post('/join/:roomId', auth, joinRoom);
