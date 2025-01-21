@@ -55,7 +55,7 @@ const LoginForm = ({ onLogin, onSwitchToRegister }) => {
         <button
           type="button"
           onClick={onSwitchToRegister}
-          className="text-yellow-500 hover:text-yellow-400 font-semibold"
+          className="text-yellow-500 hover:text-yellow-400 font-semibold transition-colors"
         >
           Kayıt Ol
         </button>

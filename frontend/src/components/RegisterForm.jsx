@@ -77,7 +77,7 @@ const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="text-yellow-500 hover:text-yellow-400 font-semibold"
+          className="text-yellow-500 hover:text-yellow-400 font-semibold transition-colors"
         >
           Giriş Yap
         </button>

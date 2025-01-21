@@ -2,10 +2,15 @@ import { useState, useEffect } from 'react';
 
 const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
   const [selectedChips, setSelectedChips] = useState([]);
+  const [currentMaxChips, setCurrentMaxChips] = useState(maxChips);
+
+  useEffect(() => {
+    setCurrentMaxChips(maxChips);
+  }, [maxChips]);
 
   useEffect(() => {
     // Varsayılan bahis miktarını ayarla
-    if (defaultBet > 0 && defaultBet <= maxChips) {
+    if (defaultBet > 0 && defaultBet <= currentMaxChips) {
       const chips = [];
       let remainingBet = defaultBet;
 
@@ -19,7 +24,7 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
 
       setSelectedChips(chips);
     }
-  }, [defaultBet, maxChips]);
+  }, [defaultBet, currentMaxChips]);
 
   const chipValues = [
     { value: 500, image: '/img/chips/chip-500.png' },
@@ -33,13 +38,13 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
   const totalBet = selectedChips.reduce((sum, chip) => sum + chip.value, 0);
 
   const handleChipClick = (chip) => {
-    if (totalBet + chip.value <= maxChips) {
+    if (totalBet + chip.value <= currentMaxChips) {
       setSelectedChips([...selectedChips, chip]);
     }
   };
 
   const handleChipRightClick = (e, chipValue) => {
-    e.preventDefault(); // Sağ tık menüsünü engelle
+    e.preventDefault();
     const index = selectedChips.map(chip => chip.value).lastIndexOf(chipValue);
     if (index !== -1) {
       const newChips = [...selectedChips];
@@ -60,7 +65,7 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
       {/* Mevcut Bakiye */}
       <div className="mb-6 text-center">
         <p className="text-lg text-yellow-300 font-mono">
-          Bakiye: <span className="text-yellow-400 font-bold">{maxChips}</span>
+          Bakiye: <span className="text-yellow-400 font-bold">{currentMaxChips}</span>
         </p>
       </div>
 
@@ -71,7 +76,9 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
             key={chip.value}
             onClick={() => handleChipClick(chip)}
             onContextMenu={(e) => handleChipRightClick(e, chip.value)}
-            className="relative w-16 h-16 md:w-20 md:h-20 cursor-pointer hover:scale-110 transition-transform select-none"
+            className={`relative w-16 h-16 md:w-20 md:h-20 cursor-pointer hover:scale-110 transition-transform select-none ${
+              chip.value > currentMaxChips ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             <img
               src={chip.image}
@@ -91,13 +98,11 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
         {/* Seçili Chipler */}
         <div className="absolute inset-0 flex flex-wrap justify-center items-center gap-2 p-2">
           {selectedChips.map((chip, index) => {
-            // Aynı değerdeki chip'leri grupla
             const sameValueChips = selectedChips.filter(c => c.value === chip.value);
             const chipIndex = sameValueChips.findIndex((_, i) => 
               selectedChips.indexOf(sameValueChips[i]) === index
             );
             
-            // Eğer bu chip daha önce render edilmiş aynı değerdeki bir chip ise atla
             if (selectedChips.findIndex(c => c.value === chip.value) !== index) {
               return null;
             }
@@ -113,7 +118,6 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
                   zIndex: chipIndex + 1
                 }}
               >
-                {/* Chip yığını */}
                 {sameValueChips.map((_, stackIndex) => (
                   <div
                     key={stackIndex}
@@ -132,7 +136,6 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
                   </div>
                 ))}
                 
-                {/* Chip sayısı */}
                 {sameValueChips.length > 1 && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black text-sm font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-black/20"
                        style={{ zIndex: sameValueChips.length + 10 }}>
@@ -171,8 +174,8 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
       <div className="mt-4 text-center text-yellow-300/80 text-sm">
         {totalBet < 5 ? (
           <p>Minimum bahis: 5</p>
-        ) : totalBet > maxChips ? (
-          <p>Maksimum bahis: {maxChips}</p>
+        ) : totalBet > currentMaxChips ? (
+          <p>Maksimum bahis: {currentMaxChips}</p>
         ) : (
           <p>Chip'leri eklemek için tıklayın, kaldırmak için sağ tıklayın</p>
         )}

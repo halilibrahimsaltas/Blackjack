@@ -13,6 +13,35 @@ import PageTitle from './components/PageTitle'
 
 const API_URL = 'http://localhost:5000/api'
 
+// El değerini hesaplama fonksiyonu
+const calculateHandValue = (cards) => {
+  if (!Array.isArray(cards)) return 0;
+  
+  let value = 0;
+  let aces = 0;
+
+  for (let card of cards) {
+    const cardValue = card.split('_')[0];
+    if (cardValue === 'ace') {
+      aces += 1;
+    } else if (['king', 'queen', 'jack'].includes(cardValue)) {
+      value += 10;
+    } else {
+      value += parseInt(cardValue);
+    }
+  }
+
+  for (let i = 0; i < aces; i++) {
+    if (value + 11 <= 21) {
+      value += 11;
+    } else {
+      value += 1;
+    }
+  }
+
+  return value;
+};
+
 function AppContent() {
   const [game, setGame] = useState(null)
   const [user, setUser] = useState(null)
@@ -88,17 +117,85 @@ function AppContent() {
       setLoading(true);
       setError(null);
       
-      const response = await axios.post(`${API_URL}/game/start`, { bet });
+      if (!token) {
+        setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        handleLogout();
+        return;
+      }
+
+      console.log('Oyun başlatma isteği gönderiliyor:', {
+        bet,
+        token: token ? 'Mevcut' : 'Yok',
+        userChips: user.chips
+      });
+      
+      const response = await axios.post(
+        `${API_URL}/game/start`, 
+        { 
+          bet: Number(bet),
+          gameType: 'single'
+        },
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+      
+      console.log('Backend yanıtı:', response.data);
+      
+      if (!response.data) {
+        throw new Error('Sunucudan yanıt alınamadı');
+      }
+
       const gameData = response.data;
       
+      if (!gameData || !gameData._id) {
+        throw new Error('Geçersiz oyun verisi');
+      }
+
+      console.log('Oyun başarıyla başlatıldı:', gameData);
+      
       setGame(gameData);
-      setShowBetForm(false);
+      setUser(prev => ({ 
+        ...prev, 
+        chips: prev.chips - bet,
+        lastBetAmount: bet 
+      }));
+      
       setLoading(false);
+      
     } catch (error) {
-      console.error('Oyun başlatma hatası:', error);
-      setError(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');
+      console.error('Oyun başlatma hatası:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      setError(
+        error.response?.data?.message || 
+        error.message || 
+        'Oyun başlatılırken bir hata oluştu'
+      );
       setLoading(false);
     }
+  };
+
+  const handleBetConfirm = (bet) => {
+    if (!token) {
+      setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+      handleLogout();
+      return;
+    }
+    
+    if (bet <= 0 || bet > user.chips) {
+      setError('Geçersiz bahis miktarı');
+      return;
+    }
+    
+    console.log('Bahis onaylandı:', bet);
+    startGame(bet);
   };
 
   const split = async () => {
@@ -114,15 +211,56 @@ function AppContent() {
 
   const hit = async () => {
     try {
+      if (!game?._id) {
+        console.error('Oyun ID bulunamadı');
+        setError('Aktif oyun bulunamadı');
+        return;
+      }
+
+      console.log('Kart çekme isteği gönderiliyor:', {
+        gameId: game._id,
+        gameStatus: game.status,
+        playerStatus: game.players[0]?.status
+      });
+
       const response = await axios.post(
         `${API_URL}/game/hit/single/${game._id}`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
-      setGame(response.data);
+      
+      console.log('Kart çekme yanıtı:', response.data);
+      
+      if (response.data) {
+        setGame(response.data);
+        if (response.data.userChips !== undefined) {
+          setUser(prev => ({ ...prev, chips: response.data.userChips }));
+        }
+      } else {
+        throw new Error('Geçersiz sunucu yanıtı');
+      }
     } catch (error) {
-      console.error('Kart çekilemedi:', error);
-      setError(error.response?.data?.message || 'Kart çekilirken bir hata oluştu');
+      console.error('Kart çekme hatası:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status,
+        message: error.message
+      });
+      
+      let errorMessage = 'Kart çekilirken bir hata oluştu';
+      if (error.response?.status === 404) {
+        errorMessage = 'Oyun bulunamadı veya sıra sizde değil';
+      }
+      
+      setError(
+        error.response?.data?.message || 
+        errorMessage
+      );
     }
   };
 
@@ -134,23 +272,98 @@ function AppContent() {
         return;
       }
 
-      console.log('Stand isteği gönderiliyor - GameID:', game._id);
+      if (game.status !== 'playing' || game.players[0]?.status !== 'playing') {
+        setError('Şu anda stand yapamazsınız');
+        return;
+      }
+
+      console.log('Stand isteği gönderiliyor:', {
+        gameId: game._id,
+        gameStatus: game.status,
+        playerStatus: game.players[0]?.status
+      });
+
       const response = await axios.post(
         `${API_URL}/game/stand/single/${game._id}`,
         {},
         { 
           headers: { 
-            Authorization: `Bearer ${token}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           } 
         }
       );
+      
       console.log('Stand yanıtı:', response.data);
-      setGame(response.data);
+      
+      if (!response.data) {
+        throw new Error('Sunucudan yanıt alınamadı');
+      }
+
+      // Backend yanıtını kontrol et
+      const gameData = response.data;
+      
+      if (!gameData || !gameData._id) {
+        throw new Error('Geçersiz oyun verisi');
+      }
+
+      console.log('Stand işlemi başarılı:', gameData);
+      
+      setGame(gameData);
+      if (gameData.userChips !== undefined) {
+        setUser(prev => ({ ...prev, chips: gameData.userChips }));
+      }
+      
     } catch (error) {
-      console.error('Stand hatası:', error);
-      setError(error.response?.data?.message || 'İşlem yapılırken bir hata oluştu');
+      console.error('Stand hatası:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status,
+        message: error.message
+      });
+      
+      let errorMessage = 'Stand işlemi yapılırken bir hata oluştu';
+      if (error.response?.status === 400) {
+        errorMessage = 'Geçersiz hamle: Stand yapılamıyor';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Oyun bulunamadı';
+      }
+      
+      setError(
+        error.response?.data?.message || 
+        errorMessage
+      );
     }
+  };
+
+  // Otomatik blackjack kontrolü
+  useEffect(() => {
+    const checkBlackjack = async () => {
+      if (game && game.status === 'playing') {
+        const player = game.players[0];
+        if (player && player.status === 'playing') {
+          const playerHand = player.hand || [];
+          if (playerHand.length === 2) {
+            const value = calculateHandValue(playerHand);
+            if (value === 21) {
+              console.log('Blackjack tespit edildi, otomatik stand yapılıyor');
+              await stand();
+            }
+          }
+        }
+      }
+    };
+
+    checkBlackjack();
+  }, [game?.players[0]?.hand]);
+
+  // Login ve Register arasında geçiş fonksiyonları
+  const handleSwitchToRegister = () => {
+    navigate('/register');
+  };
+
+  const handleSwitchToLogin = () => {
+    navigate('/login');
   };
 
   return (
@@ -164,7 +377,10 @@ function AppContent() {
           <Route path="/login" element={!user ? (
             <>
               <div className="container mx-auto px-4 py-8">
-                <LoginForm onLogin={handleLogin} />
+                <LoginForm 
+                  onLogin={handleLogin} 
+                  onSwitchToRegister={handleSwitchToRegister}
+                />
               </div>
             </>
           ) : <Navigate to="/select-mode" />} />
@@ -172,7 +388,10 @@ function AppContent() {
           <Route path="/register" element={!user ? (
             <>
               <div className="container mx-auto px-4 py-8">
-                <RegisterForm onRegister={handleRegister} />
+                <RegisterForm 
+                  onRegister={handleRegister}
+                  onSwitchToLogin={handleSwitchToLogin}
+                />
               </div>
             </>
           ) : <Navigate to="/select-mode" />} />
@@ -253,13 +472,17 @@ function AppContent() {
                       game={game}
                       onHit={hit}
                       onStand={stand}
-                      onStartGame={startGame}
+                      onStartGame={handleBetConfirm}
                       onSplit={split}
                       chips={user.chips}
                       user={user}
                     />
                   ) : (
-                    <BetForm onStartGame={startGame} currentChips={user.chips} lastBetAmount={user.lastBetAmount} />
+                    <BetForm 
+                      onStartGame={handleBetConfirm} 
+                      currentChips={user.chips} 
+                      lastBetAmount={user.lastBetAmount || 10}
+                    />
                   )}
                   {error && (
                     <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">

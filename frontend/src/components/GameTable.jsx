@@ -38,7 +38,7 @@ const canSplit = (cards) => {
   return value1 === value2;
 };
 
-const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) => {
+const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, onNewGame }) => {
   if (!game) return null;
   const [showWinMessage, setShowWinMessage] = useState(false);
   const [showBetModal, setShowBetModal] = useState(false);
@@ -57,7 +57,13 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
     : calculateHandValue(game.dealerHand);
 
   // Oyun durumunu kontrol et
-  const isGameOver = game.status === 'finished' || playerStatus === 'bust' || playerStatus === 'lost' || playerStatus === 'won' || playerStatus === 'push' || playerStatus === 'blackjack';
+  const isGameOver = game.status === 'finished' || 
+    playerStatus === 'bust' || 
+    playerStatus === 'lost' || 
+    playerStatus === 'won' || 
+    playerStatus === 'push' || 
+    playerStatus === 'blackjack';
+
   const canHit = playerStatus === 'playing';
   const canStand = playerStatus === 'playing';
   const canSplitHand = canSplit(playerHand) && chips >= currentBet;
@@ -83,14 +89,27 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
         setShowWinMessage(true);
         setTimeout(() => {
           setShowWinMessage(false);
+          if (game.status === 'finished') {
+            setShowBetModal(true);
+          }
         }, 1500);
       }, 300);
     }
-  }, [isGameOver, playerStatus]);
+  }, [isGameOver, playerStatus, game.status]);
 
   const handleBetConfirm = (bet) => {
+    if (bet <= 0 || bet > chips) {
+      console.error('Geçersiz bahis miktarı:', bet);
+      return;
+    }
+    
+    console.log('Bahis onaylandı (GameTable):', bet);
     setShowBetModal(false);
     onStartGame(bet);
+  };
+
+  const handleNewGameClick = () => {
+    setShowBetModal(true);
   };
 
   // Oyun durumunu konsola yazdır
@@ -165,7 +184,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
       ) : (
         <div className="flex gap-4 mt-8">
           <button
-            onClick={() => setShowBetModal(true)}
+            onClick={handleNewGameClick}
             className="px-6 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
           >
             Yeni El
@@ -201,7 +220,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
 
       {/* Bahis Modal */}
       {showBetModal && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 animate-fadeIn">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/80 animate-fadeIn z-50">
           <div className="bg-[#111827] p-8 rounded-xl shadow-2xl border-2 border-yellow-500/30">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-yellow-500">Bahis Yap</h2>
@@ -215,7 +234,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user }) 
             <ChipSelector
               maxChips={chips}
               onBetConfirm={handleBetConfirm}
-              defaultBet={user.lastBetAmount}
+              defaultBet={Math.min(user.lastBetAmount || 10, chips)}
             />
           </div>
         </div>
