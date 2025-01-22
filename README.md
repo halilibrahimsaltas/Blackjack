@@ -105,11 +105,4 @@ Detaylı API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına
 4. Branch'inizi push edin (`git push origin feature/amazing`)
 5. Pull Request oluşturun
 
-## Lisans 📝
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](./LICENSE) dosyasına bakın.
-
-## İletişim 📧
-
-- GitHub: [@kullaniciadi](https://github.com/kullaniciadi)
-- Email: ornek@email.com
