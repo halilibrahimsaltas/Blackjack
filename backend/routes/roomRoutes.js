@@ -1,6 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { createRoom, getRooms, joinRoom, leaveRoom, getRoom } = require('../controllers/roomController');
+const { 
+  createRoom, 
+  getRooms, 
+  joinRoom, 
+  leaveRoom, 
+  getRoom,
+  toggleReady,
+  kickPlayer,
+  startGame,
+  checkActiveRoom
+} = require('../controllers/roomController');
 const auth = require('../middleware/auth');
 
 // Oda oluştur
@@ -8,6 +18,9 @@ router.post('/create', auth, createRoom);
 
 // Odaları listele
 router.get('/list', auth, getRooms);
+
+// Aktif oda kontrolü - Bu route'u öne aldık
+router.get('/active', auth, checkActiveRoom);
 
 // Tek bir odayı getir
 router.get('/:roomId', auth, getRoom);
@@ -17,5 +30,10 @@ router.post('/join/:roomId', auth, joinRoom);
 
 // Odadan ayrıl
 router.post('/leave/:roomId', auth, leaveRoom);
+
+// Diğer rotalar
+router.post('/:roomId/ready', auth, toggleReady);
+router.post('/:roomId/kick/:targetUserId', auth, kickPlayer);
+router.post('/:roomId/start', auth, startGame);
 
 module.exports = router; 

@@ -22,16 +22,6 @@ exports.getRoom = async (req, res) => {
 
     console.log('Oda detayları isteniyor:', { roomId, userId });
 
-    // Kullanıcının başka bir odada olup olmadığını kontrol et
-    const userInAnotherRoom = await Room.findOne({
-      _id: { $ne: roomId },
-      'currentPlayers.userId': userId
-    });
-
-    if (userInAnotherRoom) {
-      return res.status(400).json({ message: 'Başka bir odada bulunuyorsunuz' });
-    }
-
     const room = await Room.findById(roomId)
       .select('-password')
       .populate('currentPlayers.userId', 'username chips');
@@ -43,60 +33,26 @@ exports.getRoom = async (req, res) => {
 
     // Kullanıcının odada olup olmadığını kontrol et
     const existingPlayer = room.currentPlayers.find(
-      player => player.userId.toString() === userId.toString()
+      player => {
+        const playerId = player.userId._id ? player.userId._id.toString() : player.userId.toString();
+        return playerId === userId;
+      }
     );
 
+    console.log('Kullanıcı kontrolü:', {
+      userId,
+      players: room.currentPlayers.map(p => ({
+        playerId: p.userId._id ? p.userId._id.toString() : p.userId.toString()
+      })),
+      existingPlayer: !!existingPlayer
+    });
+
     if (!existingPlayer) {
-      // Kullanıcı odada değilse ve oda dolu değilse ekle
-      if (room.currentPlayers.length >= room.maxPlayers) {
-        return res.status(400).json({ message: 'Oda dolu' });
-      }
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
-      }
-
-      // Minimum bet kontrolü
-      if (user.chips < room.minBet) {
-        return res.status(400).json({ message: 'Yetersiz chips' });
-      }
-
-      // Pozisyon belirle
-      const positions = room.currentPlayers.map(p => p.position);
-      let newPosition = 1;
-      while (positions.includes(newPosition)) newPosition++;
-
-      // Kullanıcıyı odaya ekle
-      const playerExists = await Room.findOne({
-        _id: roomId,
-        'currentPlayers.userId': userId
-      });
-
-      if (!playerExists) {
-        room.currentPlayers.push({
-          userId,
-          username: user.username,
-          chips: user.chips,
-          position: newPosition,
-          isReady: false,
-          isOwner: false
-        });
-
-        await room.save();
-
-        // Socket.io ile diğer oyunculara bildir
-        req.io?.emit('roomUpdated', room);
-      }
+      return res.status(403).json({ message: 'Bu odaya erişim izniniz yok' });
     }
 
-    // Odayı tekrar populate et
-    const updatedRoom = await Room.findById(roomId)
-      .select('-password')
-      .populate('currentPlayers.userId', 'username chips');
-
-    console.log('Oda detayları gönderiliyor:', updatedRoom);
-    res.json(updatedRoom);
+    console.log('Oda detayları gönderiliyor:', room);
+    res.json(room);
   } catch (error) {
     console.error('Oda detayları getirme hatası:', error);
     res.status(500).json({ message: error.message });
@@ -145,7 +101,7 @@ exports.createRoom = async (req, res) => {
       autoStart: autoStart || false,
       status: 'waiting',
       currentPlayers: [{
-        userId,
+        userId: user._id,
         username: user.username,
         chips: user.chips,
         position: 1,
@@ -203,6 +159,23 @@ exports.joinRoom = async (req, res) => {
 
     console.log('Odaya katılma isteği:', { roomId, userId });
 
+    // Kullanıcının başka bir odada olup olmadığını kontrol et
+    const userInAnotherRoom = await Room.findOne({
+      'currentPlayers.userId': userId
+    });
+
+    if (userInAnotherRoom) {
+      if (userInAnotherRoom._id.toString() === roomId) {
+        // Kullanıcı zaten bu odada, odayı döndür
+        const populatedRoom = await Room.findById(roomId)
+          .select('-password')
+          .populate('currentPlayers.userId', 'username chips');
+        return res.json(populatedRoom);
+      } else {
+        return res.status(400).json({ message: 'Başka bir odada bulunuyorsunuz' });
+      }
+    }
+
     const room = await Room.findById(roomId);
     if (!room) {
       console.log('Oda bulunamadı:', roomId);
@@ -217,11 +190,6 @@ exports.joinRoom = async (req, res) => {
     // Kapasite kontrolü
     if (room.currentPlayers.length >= room.maxPlayers) {
       return res.status(400).json({ message: 'Oda dolu' });
-    }
-
-    // Kullanıcı zaten odada mı?
-    if (room.currentPlayers.some(player => player.userId.toString() === userId)) {
-      return res.status(400).json({ message: 'Zaten odasınız' });
     }
 
     // Kullanıcı bilgilerini al
@@ -255,6 +223,9 @@ exports.joinRoom = async (req, res) => {
     const populatedRoom = await Room.findById(room._id)
       .select('-password')
       .populate('currentPlayers.userId', 'username chips');
+
+    // Socket.io ile diğer oyunculara bildir
+    req.io?.emit('roomUpdated', populatedRoom);
 
     console.log('Odaya katılma başarılı:', populatedRoom);
     res.json(populatedRoom);
@@ -440,5 +411,43 @@ exports.deleteUserRooms = async (userId) => {
   } catch (error) {
     console.error('Odaları silme hatası:', error);
     return false;
+  }
+};
+
+// Kullanıcının aktif odasını kontrol et
+exports.checkActiveRoom = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log('Aktif oda kontrolü yapılıyor:', userId);
+
+    if (!userId) {
+      console.log('Kullanıcı ID bulunamadı');
+      return res.status(401).json({ message: 'Yetkilendirme hatası' });
+    }
+
+    const activeRoom = await Room.findOne({
+      'currentPlayers.userId': userId
+    });
+
+    console.log('Bulunan aktif oda:', activeRoom);
+
+    if (!activeRoom) {
+      return res.json({
+        hasActiveRoom: false,
+        message: 'Aktif oda bulunamadı'
+      });
+    }
+
+    res.json({
+      hasActiveRoom: true,
+      roomId: activeRoom._id,
+      roomName: activeRoom.name
+    });
+  } catch (error) {
+    console.error('Aktif oda kontrolü hatası:', error);
+    res.status(500).json({ 
+      message: 'Aktif oda kontrolü sırasında bir hata oluştu',
+      error: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+    });
   }
 }; 
