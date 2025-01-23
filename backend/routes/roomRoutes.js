@@ -9,7 +9,8 @@ const {
   toggleReady,
   kickPlayer,
   startGame,
-  checkActiveRoom
+  checkActiveRoom,
+  forceStartGame
 } = require('../controllers/roomController');
 const auth = require('../middleware/auth');
 
@@ -35,5 +36,6 @@ router.post('/leave/:roomId', auth, leaveRoom);
 router.post('/:roomId/ready', auth, toggleReady);
 router.post('/:roomId/kick/:targetUserId', auth, kickPlayer);
 router.post('/:roomId/start', auth, startGame);
+router.post('/:roomId/force-start', auth, forceStartGame);
 
 module.exports = router; 

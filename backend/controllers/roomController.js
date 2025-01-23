@@ -355,16 +355,21 @@ exports.kickPlayer = async (req, res) => {
 exports.startGame = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.userId;
 
-    const room = await Room.findById(roomId);
+    const room = await Room.findById(roomId)
+      .populate('currentPlayers.userId', 'username chips');
+
     if (!room) {
       return res.status(404).json({ message: 'Oda bulunamadı' });
     }
 
     // Owner kontrolü
     const isOwner = room.currentPlayers.find(
-      player => player.userId.toString() === userId
+      player => {
+        const playerId = player.userId._id ? player.userId._id.toString() : player.userId.toString();
+        return playerId === userId;
+      }
     )?.isOwner;
 
     if (!isOwner) {
@@ -373,14 +378,83 @@ exports.startGame = async (req, res) => {
 
     // Oyun başlatılabilir mi kontrolü
     if (!room.canStartGame()) {
+      const notReadyPlayers = room.currentPlayers.filter(p => !p.isReady)
+        .map(p => p.username)
+        .join(', ');
+
+      const notEnoughChipsPlayers = room.currentPlayers.filter(p => p.chips < room.minBet)
+        .map(p => p.username)
+        .join(', ');
+
+      let message = 'Oyun başlatılamıyor:';
+      if (notReadyPlayers) {
+        message += `\nHazır olmayan oyuncular: ${notReadyPlayers}`;
+      }
+      if (notEnoughChipsPlayers) {
+        message += `\nYetersiz chip'e sahip oyuncular: ${notEnoughChipsPlayers}`;
+      }
+
+      return res.status(400).json({ message });
+    }
+
+    await room.startGame();
+
+    // Socket.io ile diğer oyunculara bildir
+    req.io?.emit('gameStarted', {
+      roomId: room._id,
+      message: 'Oyun başladı!'
+    });
+
+    res.json(room);
+  } catch (error) {
+    console.error('Oyun başlatma hatası:', error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Oyunu zorla başlat (sadece owner için)
+exports.forceStartGame = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user.userId;
+
+    const room = await Room.findById(roomId)
+      .populate('currentPlayers.userId', 'username chips');
+
+    if (!room) {
+      return res.status(404).json({ message: 'Oda bulunamadı' });
+    }
+
+    // Owner kontrolü
+    const isOwner = room.currentPlayers.find(
+      player => {
+        const playerId = player.userId._id ? player.userId._id.toString() : player.userId.toString();
+        return playerId === userId;
+      }
+    )?.isOwner;
+
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+    }
+
+    // Zorla başlatma kontrolü
+    if (!room.canForceStart()) {
       return res.status(400).json({ 
-        message: 'Oyun başlatılamaz. Tüm oyuncuların hazır olması ve yeterli chip\'e sahip olması gerekiyor.' 
+        message: 'Oyun başlatılamıyor. Hazır olduğunuzdan ve yeterli chip\'e sahip olduğunuzdan emin olun.' 
       });
     }
 
     await room.startGame();
+
+    // Socket.io ile diğer oyunculara bildir
+    req.io?.emit('gameStarted', {
+      roomId: room._id,
+      message: 'Oda sahibi oyunu başlattı!'
+    });
+
     res.json(room);
   } catch (error) {
+    console.error('Oyun başlatma hatası:', error);
     res.status(400).json({ message: error.message });
   }
 };

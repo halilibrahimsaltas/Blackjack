@@ -28,7 +28,6 @@ const RoomContainer = ({ user }) => {
 
     const initializeRoom = async () => {
       try {
-        // Önce oda verilerini al
         const response = await axios.get(
           `${API_URL}/room/${roomId}`,
           {
@@ -43,7 +42,7 @@ const RoomContainer = ({ user }) => {
         setRoom(response.data);
         setError(null);
 
-        // Sonra socket bağlantısını kur
+        // Socket bağlantısını kur
         if (!socketRef.current) {
           socketRef.current = io(SOCKET_URL, {
             auth: { token },
@@ -57,16 +56,24 @@ const RoomContainer = ({ user }) => {
           });
 
           socketRef.current.on('roomUpdated', (updatedRoom) => {
+            console.log('Oda güncellendi:', updatedRoom);
             if (updatedRoom._id === roomId) {
-              console.log('Oda güncellendi:', updatedRoom);
-              setRoom(prev => {
-                // Eğer mevcut oyuncu sayısı güncellenenden fazlaysa güncelleme
-                if (prev?.currentPlayers?.length >= updatedRoom.currentPlayers.length) {
-                  return prev;
-                }
-                return updatedRoom;
-              });
+              setRoom(updatedRoom);
             }
+          });
+
+          socketRef.current.on('gameStarted', (data) => {
+            console.log('Oyun başladı:', data);
+            if (data.roomId === roomId) {
+              toast.success(data.message);
+              setRoom(prev => ({ ...prev, status: 'playing' }));
+              navigate(`/game/${roomId}`);
+            }
+          });
+
+          socketRef.current.on('error', (error) => {
+            console.error('Socket hatası:', error);
+            toast.error(error.message || 'Bir hata oluştu');
           });
         }
       } catch (error) {
@@ -75,11 +82,9 @@ const RoomContainer = ({ user }) => {
         if (error.response?.status === 401) {
           setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
           navigate('/login');
-        } else if (error.response?.status === 400) {
-          setError(error.response.data.message);
-          setTimeout(() => {
-            navigate('/rooms');
-          }, 2000);
+        } else if (error.response?.status === 403) {
+          toast.error('Bu odaya erişim izniniz yok');
+          navigate('/rooms');
         } else {
           setError(error.response?.data?.message || 'Oda bilgileri alınamadı');
           setTimeout(() => {
@@ -89,10 +94,7 @@ const RoomContainer = ({ user }) => {
       }
     };
 
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      initializeRoom();
-    }
+    initializeRoom();
 
     return () => {
       if (socketRef.current) {
@@ -128,6 +130,74 @@ const RoomContainer = ({ user }) => {
     }
   };
 
+  const handleStartGame = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_URL}/room/${roomId}/start`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Oyun başlatma yanıtı:', response.data);
+      setRoom(response.data);
+
+      // Socket ile diğer oyunculara bildir
+      socketRef.current?.emit('gameStarted', {
+        roomId,
+        message: 'Oyun başladı!'
+      });
+    } catch (error) {
+      console.error('Oyun başlatma hatası:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');
+    }
+  };
+
+  const handleForceStartGame = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_URL}/room/${roomId}/force-start`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Zorla oyun başlatma yanıtı:', response.data);
+      setRoom(response.data);
+
+      // Socket ile diğer oyunculara bildir
+      socketRef.current?.emit('gameStarted', {
+        roomId,
+        message: 'Oda sahibi oyunu başlattı!'
+      });
+    } catch (error) {
+      console.error('Oyun başlatma hatası:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');
+    }
+  };
+
   if (error) {
     return (
       <div className="min-h-screen bg-[#111827] flex items-center justify-center">
@@ -143,6 +213,58 @@ const RoomContainer = ({ user }) => {
       </div>
     );
   }
+
+  const renderGameControls = () => {
+    const currentPlayer = room.currentPlayers.find(
+      p => p.userId._id === user._id
+    );
+
+    if (!currentPlayer) return null;
+
+    return (
+      <div className="flex flex-col gap-4 items-center mt-8">
+        {!currentPlayer.isReady && (
+          <button
+            onClick={toggleReady}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Hazır
+          </button>
+        )}
+        
+        {currentPlayer.isReady && !currentPlayer.isOwner && (
+          <button
+            onClick={toggleReady}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Hazır Değil
+          </button>
+        )}
+
+        {currentPlayer.isOwner && room.status === 'waiting' && (
+          <div className="flex gap-4">
+            <button
+              onClick={handleStartGame}
+              className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              Oyunu Başlat
+            </button>
+            {currentPlayer.isReady && (
+              <button
+                onClick={handleForceStartGame}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              >
+                <span>Tek Başına Başlat</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#111827] p-8">
@@ -195,26 +317,7 @@ const RoomContainer = ({ user }) => {
         </div>
 
         {/* Kontrol Butonları */}
-        <div className="flex justify-center space-x-4">
-          {room.currentPlayers[0]?.userId === user?.id ? (
-            <button
-              onClick={startGame}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              disabled={!room.currentPlayers?.every(p => p.isReady)}
-            >
-              Oyunu Başlat
-            </button>
-          ) : (
-            <button
-              onClick={toggleReady}
-              className={`px-6 py-3 ${
-                isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'
-              } text-white rounded-lg`}
-            >
-              {isReady ? 'Hazır Değil' : 'Hazır'}
-            </button>
-          )}
-        </div>
+        {renderGameControls()}
       </div>
     </div>
   );

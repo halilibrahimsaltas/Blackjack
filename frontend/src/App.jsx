@@ -11,6 +11,8 @@ import GameModeSelect from './components/GameModeSelect'
 import RoomContainer from './containers/RoomContainer'
 import PageTitle from './components/PageTitle'
 import Navbar from './components/Navbar'
+import MultiplayerGameTable from './components/MultiplayerGameTable'
+import io from 'socket.io-client'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -48,13 +50,14 @@ function AppContent() {
   const [user, setUser] = useState(null)
   const [showRegister, setShowRegister] = useState(false)
   const [showScores, setShowScores] = useState(false)
-  const [gameMode, setGameMode] = useState(null) // 'single' veya 'multi'
+  const [gameMode, setGameMode] = useState(null)
   const [showModeSelection, setShowModeSelection] = useState(false)
   const [showBetForm, setShowBetForm] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [token, setToken] = useState(null)
   const [currentRoom, setCurrentRoom] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(30)
   const navigate = useNavigate();
 
   // Token'ı axios'a ekle
@@ -62,11 +65,83 @@ function AppContent() {
     const token = localStorage.getItem('token')
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      // Kullanıcı bilgilerini getir
       fetchUserProfile()
       setToken(token)
     }
   }, [])
+
+  // Çok oyunculu oyun için socket bağlantısı
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let socket;
+    try {
+      socket = io('http://localhost:5000', {
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
+
+      socket.on('connect', () => {
+        console.log('Socket.io bağlantısı kuruldu');
+        setError(null);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket.io bağlantı hatası:', error.message);
+        setError('Sunucu bağlantısı kurulamadı. Yeniden bağlanmaya çalışılıyor...');
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('Socket.io bağlantısı kesildi:', reason);
+        if (reason === 'io server disconnect') {
+          socket.connect();
+        }
+      });
+
+      socket.on('gameUpdate', (updatedGame) => {
+        console.log('Oyun güncellendi:', updatedGame);
+        setGame(updatedGame);
+      });
+
+      socket.on('turnChange', (newTurn, remainingTime) => {
+        console.log('Sıra değişti:', { newTurn, remainingTime });
+        setTimeLeft(remainingTime);
+      });
+
+      socket.on('gameEnd', (winners) => {
+        console.log('Oyun bitti, kazananlar:', winners);
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket.io hatası:', error);
+        setError('Bir bağlantı hatası oluştu. Lütfen sayfayı yenileyin.');
+      });
+
+    } catch (error) {
+      console.error('Socket.io başlatma hatası:', error);
+      setError('Sunucu bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.');
+    }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, []);
+
+  // Geri sayım sayacı
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft]);
 
   const fetchUserProfile = async () => {
     try {
@@ -559,6 +634,37 @@ function AppContent() {
               <>
                 <div className="container mx-auto px-4 py-8">
                   <ScoreBoard />
+                </div>
+              </>
+            ) : <Navigate to="/login" />} 
+          />
+
+          <Route 
+            path="/game/:roomId" 
+            element={user ? (
+              <>
+                <div className="container mx-auto px-4">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-[600px]">
+                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-yellow-400"></div>
+                    </div>
+                  ) : (
+                    <MultiplayerGameTable
+                      game={game}
+                      room={currentRoom}
+                      user={user}
+                      onHit={hit}
+                      onStand={stand}
+                      onBet={handleBetConfirm}
+                      currentTurn={game?.currentTurn}
+                      timeLeft={timeLeft}
+                    />
+                  )}
+                  {error && (
+                    <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">
+                      {error}
+                    </div>
+                  )}
                 </div>
               </>
             ) : <Navigate to="/login" />} 

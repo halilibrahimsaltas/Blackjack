@@ -38,6 +38,14 @@ const MultiplayerGameTable = ({
   currentTurn,
   timeLeft
 }) => {
+  if (!room || !game) {
+    return (
+      <div className="flex justify-center items-center h-[600px]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-yellow-400"></div>
+      </div>
+    );
+  }
+
   const [showBetModal, setShowBetModal] = useState(false);
 
   const handleBetConfirm = (amount) => {
@@ -45,7 +53,18 @@ const MultiplayerGameTable = ({
     onBet(amount);
   };
 
-  const currentPlayer = room.currentPlayers.find(p => p.userId === user._id);
+  const currentPlayer = room.currentPlayers?.find(
+    player => player.userId._id === user._id || player.userId === user._id
+  );
+
+  if (!currentPlayer) {
+    return (
+      <div className="text-center text-red-500 p-4">
+        Bu odada oyuncu olarak bulunmuyorsunuz.
+      </div>
+    );
+  }
+
   const isCurrentTurn = currentPlayer?.position === currentTurn;
 
   return (

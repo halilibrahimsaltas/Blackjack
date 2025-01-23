@@ -27,31 +27,19 @@ module.exports = (io) => {
         socket.on('joinRoom', async (roomId) => {
             try {
                 const room = await Room.findById(roomId)
-                    .populate('currentPlayers.userId', 'username chips')
-                    .populate('creator', 'username');
+                    .select('-password')
+                    .populate('currentPlayers.userId', 'username chips');
 
                 if (!room) {
-                    socket.emit('error', 'Oda bulunamadı');
+                    socket.emit('error', { message: 'Oda bulunamadı' });
                     return;
                 }
 
-                // Önceki odalardan çık
-                socket.rooms.forEach(room => {
-                    if (room !== socket.id) {
-                        socket.leave(room);
-                    }
-                });
-
                 socket.join(roomId);
-                socket.emit('roomUpdate', room);
-
-                // Aktif oyunu kontrol et
-                const game = await Game.findOne({ room: roomId, status: { $in: ['betting', 'playing'] } });
-                if (game) {
-                    socket.emit('gameUpdate', game);
-                }
+                console.log(`Kullanıcı ${socket.userId} odaya katıldı: ${roomId}`);
             } catch (error) {
-                socket.emit('error', error.message);
+                console.error('Odaya katılma hatası:', error);
+                socket.emit('error', { message: 'Odaya katılırken bir hata oluştu' });
             }
         });
 

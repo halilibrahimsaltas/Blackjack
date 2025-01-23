@@ -115,12 +115,44 @@ roomSchema.pre('save', function(next) {
 
 // Oyun başlatılabilir mi kontrolü
 roomSchema.methods.canStartGame = function() {
-  return (
-    this.status === 'waiting' &&
-    this.currentPlayers.length >= 1 &&
-    this.currentPlayers.every(player => player.isReady) &&
-    this.currentPlayers.every(player => player.chips >= this.minBet)
+  // Oyun zaten başlamışsa false döndür
+  if (this.status === 'playing') {
+    return false;
+  }
+
+  // Odada en az 1 oyuncu olmalı
+  if (this.currentPlayers.length < 1) {
+    return false;
+  }
+
+  // Tüm oyuncuların yeterli chip'i olmalı
+  const allPlayersHaveEnoughChips = this.currentPlayers.every(
+    player => player.chips >= this.minBet
   );
+
+  // Tüm oyuncular hazır olmalı
+  const allPlayersReady = this.currentPlayers.every(
+    player => player.isReady
+  );
+
+  return allPlayersHaveEnoughChips && allPlayersReady;
+};
+
+// Oda sahibi için zorla oyun başlatma kontrolü
+roomSchema.methods.canForceStart = function() {
+  // Oyun zaten başlamışsa false döndür
+  if (this.status === 'playing') {
+    return false;
+  }
+
+  // Odada en az 1 oyuncu olmalı
+  if (this.currentPlayers.length < 1) {
+    return false;
+  }
+
+  // Sadece oda sahibinin yeterli chip'i olmalı
+  const owner = this.currentPlayers.find(player => player.isOwner);
+  return owner && owner.chips >= this.minBet && owner.isReady;
 };
 
 // Oyunu başlat
