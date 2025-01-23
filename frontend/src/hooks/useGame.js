@@ -80,6 +80,10 @@ const useGame = () => {
                 throw new Error('Aktif oyun bulunamadı');
             }
 
+            if (game.status === 'finished') {
+                return game;
+            }
+
             const response = await axios.post(`${API_URL}/game/stand/${game._id}`,
                 {},
                 { headers: { 'Authorization': `Bearer ${token}` } }
