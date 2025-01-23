@@ -1,171 +1,150 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import Card from './Card';
-import ChipSelector from './ChipSelector';
+import { toast } from 'react-hot-toast';
 
-const calculateHandValue = (cards) => {
-  let value = 0;
-  let aces = 0;
-
-  for (let card of cards) {
-    const cardValue = card.split('_')[0];
-    if (cardValue === 'ace') {
-      aces += 1;
-    } else if (['king', 'queen', 'jack'].includes(cardValue)) {
-      value += 10;
-    } else {
-      value += parseInt(cardValue);
-    }
-  }
-
-  for (let i = 0; i < aces; i++) {
-    if (value + 11 <= 21) {
-      value += 11;
-    } else {
-      value += 1;
-    }
-  }
-
-  return value;
-};
-
-const MultiplayerGameTable = ({ 
-  game, 
-  room,
-  user,
-  onHit, 
-  onStand, 
-  onBet,
-  currentTurn,
-  timeLeft
-}) => {
-  if (!room || !game) {
+export default function MultiplayerGameTable({ game, room, user, onHit, onStand, onBet, currentTurn, timeLeft }) {
+  if (!game || !room) {
     return (
-      <div className="flex justify-center items-center h-[600px]">
+      <div className="min-h-screen bg-[#111827] flex items-center justify-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-yellow-400"></div>
       </div>
     );
   }
 
-  const [showBetModal, setShowBetModal] = useState(false);
+  const calculateHandValue = (cards) => {
+    if (!Array.isArray(cards)) return 0;
+    
+    let value = 0;
+    let aces = 0;
 
-  const handleBetConfirm = (amount) => {
-    setShowBetModal(false);
-    onBet(amount);
+    for (let card of cards) {
+      const cardValue = card.split('_')[0];
+      if (cardValue === 'ace') {
+        aces += 1;
+      } else if (['king', 'queen', 'jack'].includes(cardValue)) {
+        value += 10;
+      } else {
+        value += parseInt(cardValue);
+      }
+    }
+
+    for (let i = 0; i < aces; i++) {
+      if (value + 11 <= 21) {
+        value += 11;
+      } else {
+        value += 1;
+      }
+    }
+
+    return value;
   };
 
-  const currentPlayer = room.currentPlayers?.find(
-    player => player.userId._id === user._id || player.userId === user._id
-  );
+  const isCurrentPlayer = (player) => {
+    return player.userId === user._id && game.currentPlayerIndex === game.players.indexOf(player);
+  };
 
-  if (!currentPlayer) {
+  const renderPlayerHand = (player, index) => {
+    const isCurrentPlayerTurn = isCurrentPlayer(player);
+    const handValue = calculateHandValue(player.hand);
+    const playerName = player.userId.username || 'Oyuncu';
+
     return (
-      <div className="text-center text-red-500 p-4">
-        Bu odada oyuncu olarak bulunmuyorsunuz.
-      </div>
-    );
-  }
-
-  const isCurrentTurn = currentPlayer?.position === currentTurn;
-
-  return (
-    <div className="w-full max-w-[1920px] mx-auto">
-      {/* Ana Oyun Masası */}
-      <div className="min-h-[800px] p-12 rounded-xl bg-table-green mb-8 relative">
-        {/* Krupiye Kartları */}
-        <div className="mb-20 text-center">
-          <div className="flex flex-col items-center mb-8">
-            <h2 className="text-4xl font-bold text-yellow-500 font-serif tracking-wider mb-2">
-              KRUPİYE <span className="text-3xl">({game.dealerScore})</span>
-            </h2>
+      <div key={index} className={`mb-8 p-4 rounded-lg ${isCurrentPlayerTurn ? 'bg-yellow-900/30 ring-2 ring-yellow-500' : 'bg-gray-800/50'}`}>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <span className="text-yellow-500 font-bold">{playerName}</span>
+            <span className="text-gray-400 ml-2">({player.bet} Chip)</span>
           </div>
-          <div className="flex gap-4 justify-center">
-            {game.dealerCards.map((card, index) => (
-              <Card 
-                key={index} 
-                card={card} 
-                isHidden={game.status === 'playing' && index === 1}
-              />
-            ))}
+          <div className="text-yellow-400">
+            El Değeri: {handValue}
           </div>
         </div>
-
-        {/* Oyuncu Kartları */}
-        <div className="grid grid-cols-2 gap-8">
-          {room.currentPlayers.map((player) => {
-            const playerGame = game.players.find(p => p.playerId === player.userId);
-            if (!playerGame) return null;
-
-            const handValue = calculateHandValue(playerGame.hand);
-            const isPlayerTurn = player.position === currentTurn;
-
-            return (
-              <div 
-                key={player.userId} 
-                className={`text-center ${isPlayerTurn ? 'ring-4 ring-yellow-500 rounded-xl p-4' : 'p-4'}`}
-              >
-                <div className="flex flex-col items-center mb-4">
-                  <h2 className="text-3xl font-bold text-yellow-500 font-serif tracking-wider mb-2">
-                    {player.username} <span className="text-2xl">({handValue})</span>
-                  </h2>
-                  <div className="text-gray-300 text-sm">
-                    Chips: {player.chips} | Bet: {playerGame.bet}
-                  </div>
-                  {isPlayerTurn && (
-                    <div className="text-yellow-500 font-bold mt-2">
-                      Süre: {timeLeft}s
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-4 justify-center">
-                  {playerGame.hand.map((card, index) => (
-                    <Card key={index} card={card} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        
+        <div className="flex gap-4 min-h-[140px] items-center justify-center">
+          {player.hand.map((card, cardIndex) => (
+            <Card key={cardIndex} card={card} />
+          ))}
         </div>
 
-        {/* Kontroller */}
-        {isCurrentTurn && game.status === 'playing' && (
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-            <div className="flex justify-center items-center gap-4">
-              <button 
-                onClick={onHit}
-                className="game-button px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg"
-              >
-                Kart Çek
-              </button>
-              <button 
-                onClick={onStand}
-                className="game-button px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-lg"
-              >
-                Dur
-              </button>
-            </div>
+        {isCurrentPlayerTurn && game.status === 'playing' && (
+          <div className="flex justify-center gap-4 mt-4">
+            <button
+              onClick={() => onHit()}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Kart Çek
+            </button>
+            <button
+              onClick={() => onStand()}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Dur
+            </button>
           </div>
         )}
       </div>
+    );
+  };
 
-      {/* Bahis Modal */}
-      {showBetModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-xl shadow-2xl border border-yellow-500/30 max-w-2xl w-full mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold text-yellow-500 font-serif">
-                Bahis Miktarını Seçin
-              </h2>
+  return (
+    <div className="min-h-screen bg-[#111827] py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Üst Bilgi Alanı */}
+        <div className="bg-gray-800 rounded-lg p-4 mb-8 flex justify-between items-center">
+          <div className="text-yellow-500">
+            Oda: {room.name}
+          </div>
+          <div className="text-center">
+            <div className="text-yellow-400 font-bold text-xl mb-1">
+              {timeLeft}s
             </div>
-            <ChipSelector
-              maxChips={currentPlayer?.chips || 0}
-              onBetConfirm={handleBetConfirm}
-              defaultBet={room.minBet}
-            />
+            <div className="text-gray-400 text-sm">
+              Kalan Süre
+            </div>
+          </div>
+          <div className="text-yellow-500">
+            Bahis: {game.players.find(p => p.userId === user._id)?.bet || 0} Chip
           </div>
         </div>
-      )}
+
+        {/* Krupiye Alanı */}
+        <div className="bg-gray-800/50 rounded-lg p-6 mb-8">
+          <h3 className="text-yellow-500 font-bold mb-4">Krupiye</h3>
+          <div className="flex gap-4 min-h-[140px] items-center justify-center">
+            {game.dealerHand.map((card, index) => (
+              <Card 
+                key={index} 
+                card={index === 0 || game.status === 'finished' ? card : 'back'} 
+              />
+            ))}
+          </div>
+          {game.status === 'finished' && (
+            <div className="text-center mt-4 text-yellow-400">
+              El Değeri: {calculateHandValue(game.dealerHand)}
+            </div>
+          )}
+        </div>
+
+        {/* Oyuncular Alanı */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {game.players.map((player, index) => renderPlayerHand(player, index))}
+        </div>
+
+        {/* Oyun Durumu */}
+        {game.status === 'finished' && (
+          <div className="mt-8 text-center">
+            <h3 className="text-2xl font-bold text-yellow-500 mb-4">
+              Oyun Bitti!
+            </h3>
+            <button
+              onClick={() => navigate(`/room/${room._id}`)}
+              className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              Odaya Dön
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default MultiplayerGameTable; 
+} 

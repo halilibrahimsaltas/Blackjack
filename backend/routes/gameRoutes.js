@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { startGame, startSinglePlayerGame, hit, stand, getScores, placeBet, split } = require('../controllers/gameController');
+const { startGame, startSinglePlayerGame, hit, stand, getScores, placeBet, split, getGame } = require('../controllers/gameController');
 const auth = require('../middleware/auth');
 
 // Tek oyunculu oyun başlat
@@ -29,5 +29,8 @@ router.post('/split/:gameId', auth, split);
 
 // Skor tablosu
 router.get('/scores', auth, getScores);
+
+// Oyun detaylarını getirme
+router.get('/:roomId', auth, getGame);
 
 module.exports = router; 

@@ -26,8 +26,9 @@ const RoomContainer = ({ user }) => {
       return;
     }
 
-    const initializeRoom = async () => {
+    const fetchRoomData = async () => {
       try {
+        console.log('Oda verileri alınıyor:', roomId);
         const response = await axios.get(
           `${API_URL}/room/${roomId}`,
           {
@@ -37,64 +38,80 @@ const RoomContainer = ({ user }) => {
             }
           }
         );
-
-        console.log('Oda detayları alındı:', response.data);
+        console.log('Oda verileri alındı:', response.data);
         setRoom(response.data);
         setError(null);
-
-        // Socket bağlantısını kur
-        if (!socketRef.current) {
-          socketRef.current = io(SOCKET_URL, {
-            auth: { token },
-            transports: ['websocket'],
-            upgrade: false
-          });
-
-          socketRef.current.on('connect', () => {
-            console.log('Socket.io bağlantısı kuruldu');
-            socketRef.current.emit('joinRoom', roomId);
-          });
-
-          socketRef.current.on('roomUpdated', (updatedRoom) => {
-            console.log('Oda güncellendi:', updatedRoom);
-            if (updatedRoom._id === roomId) {
-              setRoom(updatedRoom);
-            }
-          });
-
-          socketRef.current.on('gameStarted', (data) => {
-            console.log('Oyun başladı:', data);
-            if (data.roomId === roomId) {
-              toast.success(data.message);
-              setRoom(prev => ({ ...prev, status: 'playing' }));
-              navigate(`/game/${roomId}`);
-            }
-          });
-
-          socketRef.current.on('error', (error) => {
-            console.error('Socket hatası:', error);
-            toast.error(error.message || 'Bir hata oluştu');
-          });
-        }
       } catch (error) {
-        console.error('Oda detayları alınamadı:', error.response || error);
-        
+        console.error('Oda verileri alınamadı:', error);
         if (error.response?.status === 401) {
           setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
           navigate('/login');
         } else if (error.response?.status === 403) {
-          toast.error('Bu odaya erişim izniniz yok');
+          setError('Bu odaya erişim izniniz yok');
           navigate('/rooms');
         } else {
-          setError(error.response?.data?.message || 'Oda bilgileri alınamadı');
-          setTimeout(() => {
-            navigate('/rooms');
-          }, 2000);
+          setError('Oda bilgileri alınamadı');
         }
       }
     };
 
-    initializeRoom();
+    // İlk oda verilerini al
+    fetchRoomData();
+
+    // Socket bağlantısını kur
+    const socket = io('http://localhost:5000', {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.io bağlantısı kuruldu');
+      // Odaya katıl
+      socket.emit('joinRoom', roomId);
+    });
+
+    socket.on('gameStarted', async ({ roomId, message }) => {
+      console.log('Oyun başladı:', { roomId, message });
+      try {
+        const [gameResponse, roomResponse] = await Promise.all([
+          axios.get(`${API_URL}/game/${roomId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          axios.get(`${API_URL}/room/${roomId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+        
+        if (gameResponse.data && roomResponse.data) {
+          console.log('Oyun ve oda verileri güncellendi:', {
+            game: gameResponse.data,
+            room: roomResponse.data
+          });
+          
+          setRoom(roomResponse.data);
+          navigate(`/game/${roomId}`);
+        }
+      } catch (error) {
+        console.error('Oyun verileri alınırken hata:', error);
+        setError('Oyun verileri alınamadı. Lütfen sayfayı yenileyin.');
+      }
+    });
+
+    socket.on('roomUpdated', (updatedRoom) => {
+      console.log('Oda güncellendi:', updatedRoom);
+      if (updatedRoom._id === roomId) {
+        setRoom(updatedRoom);
+      }
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket hatası:', error);
+      setError('Bir bağlantı hatası oluştu');
+    });
+
+    socketRef.current = socket;
 
     return () => {
       if (socketRef.current) {
@@ -139,25 +156,15 @@ const RoomContainer = ({ user }) => {
         return;
       }
 
-      const response = await axios.post(
-        `${API_URL}/room/${roomId}/start`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('Oyun başlatma yanıtı:', response.data);
-      setRoom(response.data);
-
-      // Socket ile diğer oyunculara bildir
-      socketRef.current?.emit('gameStarted', {
-        roomId,
-        message: 'Oyun başladı!'
+      // Önce bahis formuna yönlendir
+      navigate(`/bet/${roomId}`, { 
+        state: { 
+          returnPath: `/room/${roomId}`,
+          isMultiplayer: true,
+          minBet: room.minBet
+        } 
       });
+
     } catch (error) {
       console.error('Oyun başlatma hatası:', error.response?.data);
       toast.error(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');
@@ -173,25 +180,16 @@ const RoomContainer = ({ user }) => {
         return;
       }
 
-      const response = await axios.post(
-        `${API_URL}/room/${roomId}/force-start`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      console.log('Zorla oyun başlatma yanıtı:', response.data);
-      setRoom(response.data);
-
-      // Socket ile diğer oyunculara bildir
-      socketRef.current?.emit('gameStarted', {
-        roomId,
-        message: 'Oda sahibi oyunu başlattı!'
+      // Önce bahis formuna yönlendir
+      navigate(`/bet/${roomId}`, { 
+        state: { 
+          returnPath: `/room/${roomId}`,
+          isMultiplayer: true,
+          minBet: room.minBet,
+          forceStart: true
+        } 
       });
+
     } catch (error) {
       console.error('Oyun başlatma hatası:', error.response?.data);
       toast.error(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');

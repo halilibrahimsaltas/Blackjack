@@ -3,6 +3,15 @@ const Room = require('../models/Room');
 const User = require('../models/User');
 const { createDeck, calculateHandValue, determineWinner } = require('../utils/gameLogic');
 
+// Desteyi karıştır
+const shuffleDeck = (deck) => {
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+};
+
 // Oyun sonuçlarını kaydet
 const saveGameResults = async (game, userId) => {
     try {
@@ -364,40 +373,75 @@ const gameController = {
         try {
             const { roomId } = req.params;
             const userId = req.user.userId;
+            console.log('Oyun başlatma isteği:', { roomId, userId });
 
-            const room = await Room.findById(roomId);
+            // Odayı bul ve oyuncu bilgilerini getir
+            const room = await Room.findById(roomId).populate('currentPlayers.userId', 'username chips');
             if (!room) {
                 return res.status(404).json({ message: 'Oda bulunamadı' });
             }
 
-            // Owner kontrolü
+            // Oyuncunun oda sahibi olup olmadığını kontrol et
             const isOwner = room.currentPlayers.find(
-                p => p.userId.toString() === userId
+                player => {
+                    const playerId = player.userId._id ? player.userId._id.toString() : player.userId.toString();
+                    return playerId === userId;
+                }
             )?.isOwner;
 
             if (!isOwner) {
-                return res.status(403).json({ message: 'Bu işlem için yetkiniz yok' });
+                return res.status(403).json({ message: 'Oyunu sadece oda sahibi başlatabilir' });
             }
 
-            const game = await Game.findOne({ room: roomId, status: 'betting' });
-            if (!game || game.players.length === 0) {
-                return res.status(400).json({ message: 'Oyun başlatılamaz' });
+            // Mevcut oyunu bul
+            let game = await Game.findOne({ room: roomId, status: 'betting' });
+            if (!game) {
+                return res.status(400).json({ message: 'Aktif bir oyun bulunamadı' });
             }
 
-            // Tüm oyuncular bahis koymuş mu kontrol et
-            if (game.players.some(p => p.bet === 0)) {
+            // Tüm oyuncuların bahis koyup koymadığını kontrol et
+            const allPlayersHaveBet = game.players.length > 0 && game.players.every(player => player.bet > 0);
+            if (!allPlayersHaveBet && !req.body.force) {
                 return res.status(400).json({ message: 'Tüm oyuncular bahis koymadan oyun başlatılamaz' });
             }
 
-            await game.startGame();
+            // Desteyi karıştır
+            game.deck = shuffleDeck(game.deck);
+
+            // Her oyuncuya ikişer kart dağıt
+            for (let i = 0; i < 2; i++) {
+                for (let player of game.players) {
+                    player.hand.push(game.deck.pop());
+                }
+                // Krupiyeye de bir kart ver
+                game.dealerHand.push(game.deck.pop());
+            }
+
+            // Oyun durumunu güncelle
+            game.status = 'playing';
+            game.currentPlayerIndex = 0;
+
+            // Oyunu kaydet
+            await game.save();
+
+            // Odanın durumunu güncelle
+            room.status = 'playing';
+            await room.save();
 
             // Socket.io ile diğer oyunculara bildir
-            req.io.to(roomId).emit('gameUpdate', game);
-            req.io.to(roomId).emit('turnChange', 1, 30); // İlk oyuncunun sırası, 30 saniye
+            req.io?.emit('gameStarted', {
+                roomId: room._id,
+                message: 'Oyun başladı!',
+                game
+            });
 
             res.json(game);
         } catch (error) {
-            res.status(500).json({ message: error.message });
+            console.error('Oyun başlatma hatası:', error);
+            res.status(500).json({ 
+                message: 'Oyun başlatılırken bir hata oluştu',
+                error: error.message 
+            });
         }
     },
 
@@ -544,6 +588,60 @@ const gameController = {
         } catch (error) {
             console.error('Split hatası:', error);
             res.status(500).json({ message: error.message });
+        }
+    },
+
+    // Oyun detaylarını getirme
+    getGame: async (req, res) => {
+        try {
+            const { roomId } = req.params;
+            const userId = req.user.userId;
+
+            // Odayı bul
+            const room = await Room.findById(roomId)
+                .populate('currentPlayers.userId', 'username chips');
+
+            if (!room) {
+                return res.status(404).json({ message: 'Oda bulunamadı' });
+            }
+
+            // Kullanıcının odada olup olmadığını kontrol et
+            const isPlayerInRoom = room.currentPlayers.some(
+                player => {
+                    const playerId = player.userId._id ? player.userId._id.toString() : player.userId.toString();
+                    return playerId === userId;
+                }
+            );
+
+            if (!isPlayerInRoom) {
+                return res.status(403).json({ message: 'Bu odaya erişim izniniz yok' });
+            }
+
+            // Aktif oyunu bul
+            const game = await Game.findOne({ 
+                room: roomId,
+                status: { $in: ['betting', 'playing'] }
+            });
+
+            if (!game) {
+                return res.status(404).json({ message: 'Aktif oyun bulunamadı' });
+            }
+
+            // Oyun verilerini döndür
+            res.json({
+                _id: game._id,
+                room: game.room,
+                status: game.status,
+                players: game.players,
+                dealerHand: game.dealerHand,
+                deck: game.deck,
+                currentPlayerIndex: game.currentPlayerIndex,
+                hasSplit: game.hasSplit
+            });
+
+        } catch (error) {
+            console.error('Oyun detayları alınırken hata:', error);
+            res.status(500).json({ message: 'Sunucu hatası' });
         }
     }
 };

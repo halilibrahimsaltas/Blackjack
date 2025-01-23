@@ -13,6 +13,7 @@ import PageTitle from './components/PageTitle'
 import Navbar from './components/Navbar'
 import MultiplayerGameTable from './components/MultiplayerGameTable'
 import io from 'socket.io-client'
+import MultiplayerBetForm from './components/MultiplayerBetForm'
 
 const API_URL = 'http://localhost:5000/api'
 
@@ -90,21 +91,39 @@ function AppContent() {
         setError(null);
       });
 
-      socket.on('connect_error', (error) => {
-        console.error('Socket.io bağlantı hatası:', error.message);
-        setError('Sunucu bağlantısı kurulamadı. Yeniden bağlanmaya çalışılıyor...');
-      });
+      socket.on('gameStarted', async ({ roomId, message }) => {
+        console.log('Oyun başladı:', { roomId, message });
+        try {
+          const [gameResponse, roomResponse] = await Promise.all([
+            axios.get(`${API_URL}/game/${roomId}`),
+            axios.get(`${API_URL}/room/${roomId}`)
+          ]);
 
-      socket.on('disconnect', (reason) => {
-        console.log('Socket.io bağlantısı kesildi:', reason);
-        if (reason === 'io server disconnect') {
-          socket.connect();
+          if (gameResponse.data && roomResponse.data) {
+            console.log('Oyun ve oda verileri güncellendi:', {
+              game: gameResponse.data,
+              room: roomResponse.data
+            });
+            
+            setGame(gameResponse.data);
+            setCurrentRoom(roomResponse.data);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('Oyun verileri alınırken hata:', error);
+          setError('Oyun verileri alınamadı. Lütfen sayfayı yenileyin.');
+          setLoading(false);
         }
       });
 
       socket.on('gameUpdate', (updatedGame) => {
         console.log('Oyun güncellendi:', updatedGame);
         setGame(updatedGame);
+      });
+
+      socket.on('roomUpdate', (updatedRoom) => {
+        console.log('Oda güncellendi:', updatedRoom);
+        setCurrentRoom(updatedRoom);
       });
 
       socket.on('turnChange', (newTurn, remainingTime) => {
@@ -668,6 +687,17 @@ function AppContent() {
                 </div>
               </>
             ) : <Navigate to="/login" />} 
+          />
+
+          <Route
+            path="/bet/:roomId"
+            element={
+              user ? (
+                <MultiplayerBetForm />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
 
           <Route 
