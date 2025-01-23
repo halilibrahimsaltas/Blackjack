@@ -7,7 +7,7 @@ const BetForm = ({ onStartGame, currentChips = 1000, lastBetAmount = 10 }) => {
       
       <div className="text-center mb-8">
         <p className="text-xl text-yellow-400">
-          Mevcut Bakiye: <span className="font-bold">{currentChips.toLocaleString()}</span> Chip
+          
         </p>
       </div>
       

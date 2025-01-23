@@ -39,7 +39,8 @@ const canSplit = (cards) => {
 };
 
 const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, onNewGame }) => {
-  if (!game) return null;
+  if (!game || !game.players || game.players.length === 0) return null;
+
   const [showWinMessage, setShowWinMessage] = useState(false);
   const [showBetModal, setShowBetModal] = useState(false);
   const [autoWinMessage, setAutoWinMessage] = useState(false);
@@ -117,7 +118,6 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, on
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between p-8 bg-green-800 rounded-lg min-h-[800px]">
-   
       {/* Krupiye Alanı */}
       <div className="flex flex-col items-center mb-8">
         <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
@@ -174,7 +174,7 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, on
 
       {/* Ana Kontrol Butonları */}
       <div className="mt-auto">
-        {!isGameOver && game.players[0].status === 'playing' ? (
+        {!isGameOver && game.players[0]?.status === 'playing' ? (
           <div className="flex gap-4 mt-8">
             {canSplitHand && (
               <button

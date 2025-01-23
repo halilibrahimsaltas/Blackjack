@@ -6,6 +6,10 @@ const Navbar = ({ user, onLogout, showGameModeButton = true }) => {
   const navigate = useNavigate();
   const [showScores, setShowScores] = useState(false);
 
+  // Eğer user undefined ise, varsayılan değerler kullan
+  const username = user?.username || 'Misafir';
+  const chips = user?.chips || 0;
+
   return (
     <>
       <nav className="bg-gradient-to-b from-black/20 to-transparent">
@@ -34,11 +38,11 @@ const Navbar = ({ user, onLogout, showGameModeButton = true }) => {
             <div className="flex items-center justify-center w-1/3">
               <div className="flex items-center gap-4 bg-yellow-500/5 px-4 py-1.5 rounded-xl border border-yellow-500/10">
                 <div className="text-sm text-yellow-500 font-medium">
-                  {user.username}
+                  {username}
                 </div>
                 <div className="w-[1px] h-4 bg-yellow-500/20"></div>
                 <div className="flex items-center gap-1">
-                  <span className="text-sm text-yellow-500 font-bold">{user.chips.toLocaleString()}</span>
+                  <span className="text-sm text-yellow-500 font-bold">{chips.toLocaleString()}</span>
                   <span className="text-xs text-yellow-500/70">chip</span>
                 </div>
               </div>

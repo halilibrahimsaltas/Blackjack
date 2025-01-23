@@ -21,6 +21,26 @@ const useGame = () => {
         }
     };
 
+    const updateUserChips = (chips) => {
+        try {
+            const auth = localStorage.getItem('blackjack_auth');
+            if (auth) {
+                const authData = JSON.parse(auth);
+                authData.user.chips = chips;
+                localStorage.setItem('blackjack_auth', JSON.stringify(authData));
+            }
+
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const userData = JSON.parse(userStr);
+                userData.chips = chips;
+                localStorage.setItem('user', JSON.stringify(userData));
+            }
+        } catch (error) {
+            console.error('Chip güncelleme hatası:', error);
+        }
+    };
+
     const startGame = async (bet) => {
         try {
             const token = getToken();
@@ -34,6 +54,9 @@ const useGame = () => {
             );
             
             setGame(response.data.game);
+            if (response.data.user && response.data.user.chips !== undefined) {
+                updateUserChips(response.data.user.chips);
+            }
             setError(null);
             return response.data;
         } catch (error) {
@@ -43,7 +66,7 @@ const useGame = () => {
         }
     };
 
-    const hit = async () => {
+    const hit = async (handIndex = 0) => {
         try {
             const token = getToken();
             if (!token) {
@@ -55,11 +78,14 @@ const useGame = () => {
             }
 
             const response = await axios.post(`${API_URL}/game/hit/${game._id}`,
-                {},
+                { handIndex },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
             
-            setGame(response.data);
+            setGame(response.data.game);
+            if (response.data.user && response.data.user.chips !== undefined) {
+                updateUserChips(response.data.user.chips);
+            }
             setError(null);
             return response.data;
         } catch (error) {
@@ -69,7 +95,7 @@ const useGame = () => {
         }
     };
 
-    const stand = async () => {
+    const stand = async (handIndex = 0) => {
         try {
             const token = getToken();
             if (!token) {
@@ -80,16 +106,15 @@ const useGame = () => {
                 throw new Error('Aktif oyun bulunamadı');
             }
 
-            if (game.status === 'finished') {
-                return game;
-            }
-
             const response = await axios.post(`${API_URL}/game/stand/${game._id}`,
-                {},
+                { handIndex },
                 { headers: { 'Authorization': `Bearer ${token}` } }
             );
             
-            setGame(response.data);
+            setGame(response.data.game);
+            if (response.data.user && response.data.user.chips !== undefined) {
+                updateUserChips(response.data.user.chips);
+            }
             setError(null);
             return response.data;
         } catch (error) {
@@ -116,16 +141,11 @@ const useGame = () => {
             );
             
             setGame(response.data.game);
-            
-            const auth = localStorage.getItem('blackjack_auth');
-            if (auth) {
-                const authData = JSON.parse(auth);
-                authData.user.chips = response.data.user.chips;
-                localStorage.setItem('blackjack_auth', JSON.stringify(authData));
+            if (response.data.user && response.data.user.chips !== undefined) {
+                updateUserChips(response.data.user.chips);
             }
-
             setError(null);
-            return response.data.game;
+            return response.data;
         } catch (error) {
             console.error('Split yapılamadı:', error);
             setError('Split işlemi sırasında bir hata oluştu');

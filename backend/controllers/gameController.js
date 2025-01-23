@@ -100,74 +100,98 @@ const gameController = {
             const handValue = calculateHandValue(player.hand);
             if (handValue > 21) {
                 player.status = 'bust';
-
-                // Tüm eller bittiyse oyunu bitir
-                const allHandsFinished = game.players.every(p => 
-                    p.status !== 'playing'
-                );
-
-                if (allHandsFinished) {
-                    await game.dealerPlay();
-                }
             } else if (handValue === 21) {
-                // 21 durumunda otomatik stand
                 player.status = 'stand';
-                
-                // Tüm eller bittiyse oyunu bitir
-                const allHandsFinished = game.players.every(p => 
-                    p.status !== 'playing'
-                );
+            }
 
-                if (allHandsFinished) {
-                    // Krupiye oyunu
-                    while (calculateHandValue(game.dealerHand) < 17) {
-                        game.dealerHand.push(game.deck.pop());
+            // Tüm eller bittiyse oyunu bitir
+            const allHandsFinished = game.players.every(p => 
+                p.status !== 'playing'
+            );
+
+            if (allHandsFinished) {
+                // Krupiye oyunu
+                while (calculateHandValue(game.dealerHand) < 17) {
+                    game.dealerHand.push(game.deck.pop());
+                }
+
+                const dealerValue = calculateHandValue(game.dealerHand);
+
+                // Her el için sonuçları hesapla
+                game.players.forEach(p => {
+                    if (p.status === 'bust') return;
+
+                    const playerValue = calculateHandValue(p.hand);
+
+                    if (dealerValue > 21) {
+                        p.status = 'won';
+                    } else if (dealerValue > playerValue) {
+                        p.status = 'lost';
+                    } else if (dealerValue < playerValue) {
+                        p.status = 'won';
+                    } else {
+                        p.status = 'push';
                     }
+                });
 
-                    const dealerValue = calculateHandValue(game.dealerHand);
+                game.status = 'finished';
 
-                    // Her el için sonuçları hesapla
-                    game.players.forEach(p => {
-                        if (p.status === 'bust') return;
+                // Kazanan elleri hesapla ve kullanıcıya öde
+                const user = await User.findById(userId);
+                let totalWinnings = 0;
 
-                        const playerValue = calculateHandValue(p.hand);
-
-                        if (dealerValue > 21) {
-                            p.status = 'won';
-                        } else if (dealerValue > playerValue) {
-                            p.status = 'lost';
-                        } else if (dealerValue < playerValue) {
-                            p.status = 'won';
+                game.players.forEach(p => {
+                    if (p.status === 'won') {
+                        if (p.hand.length === 2 && calculateHandValue(p.hand) === 21) {
+                            // Blackjack için 3:2 ödeme
+                            totalWinnings += Math.floor(p.bet * 2.5);
                         } else {
-                            p.status = 'push';
-                        }
-                    });
-
-                    game.status = 'finished';
-
-                    // Kazanan elleri hesapla ve kullanıcıya öde
-                    const user = await User.findById(userId);
-                    let totalWinnings = 0;
-
-                    game.players.forEach(p => {
-                        if (p.status === 'won') {
                             // Normal kazanç için 1:1 ödeme
                             totalWinnings += p.bet * 2;
-                        } else if (p.status === 'push') {
-                            // Beraberlikte bahis iadesi
-                            totalWinnings += p.bet;
                         }
-                    });
-
-                    if (totalWinnings > 0) {
-                        user.chips += totalWinnings;
-                        await user.save();
+                    } else if (p.status === 'push') {
+                        // Beraberlikte bahis iadesi
+                        totalWinnings += p.bet;
                     }
+                });
+
+                if (totalWinnings > 0) {
+                    user.chips += totalWinnings;
+                    await user.save();
                 }
+
+                await game.save();
+
+                // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
+                return res.json({
+                    game: {
+                        _id: game._id,
+                        players: game.players,
+                        dealerHand: game.dealerHand,
+                        status: game.status,
+                        deck: game.deck
+                    },
+                    user: {
+                        chips: user.chips
+                    }
+                });
             }
 
             await game.save();
-            res.json(game);
+
+            // Oyun devam ediyorsa sadece oyun durumunu döndür
+            res.json({
+                game: {
+                    _id: game._id,
+                    players: game.players,
+                    dealerHand: game.dealerHand,
+                    status: game.status,
+                    deck: game.deck
+                },
+                user: {
+                    chips: req.user.chips
+                }
+            });
         } catch (error) {
             console.error('Kart çekme hatası:', error);
             res.status(500).json({ message: error.message });
@@ -190,14 +214,6 @@ const gameController = {
             const player = game.players[handIndex];
             if (!player || player.playerId.toString() !== userId) {
                 return res.status(403).json({ message: 'Bu oyuna erişim izniniz yok' });
-            }
-
-            // Oyun durumunu kontrol et
-            if (game.status !== 'playing') {
-                return res.status(400).json({ 
-                    message: 'Oyun zaten bitmiş durumda',
-                    game: game
-                });
             }
 
             // Oyuncunun durumunu kontrol et
@@ -252,9 +268,9 @@ const gameController = {
 
                 game.players.forEach(p => {
                     if (p.status === 'won') {
-                        if (p.hand.length === 2 && calculateHandValue(p.hand) === 21) {
+                        if (p.status === 'blackjack') {
                             // Blackjack için 3:2 ödeme
-                            totalWinnings += p.bet * 2.5;
+                            totalWinnings += Math.floor(p.bet * 2.5);
                         } else {
                             // Normal kazanç için 1:1 ödeme
                             totalWinnings += p.bet * 2;
@@ -269,10 +285,39 @@ const gameController = {
                     user.chips += totalWinnings;
                     await user.save();
                 }
+
+                await game.save();
+
+                // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
+                return res.json({
+                    game: {
+                        _id: game._id,
+                        players: game.players,
+                        dealerHand: game.dealerHand,
+                        status: game.status,
+                        deck: game.deck
+                    },
+                    user: {
+                        chips: user.chips
+                    }
+                });
             }
 
             await game.save();
-            res.json(game);
+
+            // Oyun devam ediyorsa sadece oyun durumunu döndür
+            res.json({
+                game: {
+                    _id: game._id,
+                    players: game.players,
+                    dealerHand: game.dealerHand,
+                    status: game.status,
+                    deck: game.deck
+                },
+                user: {
+                    chips: req.user.chips
+                }
+            });
         } catch (error) {
             console.error('Stand hatası:', error);
             res.status(500).json({ message: error.message });
@@ -447,6 +492,8 @@ const gameController = {
             game.hasSplit = true;
 
             await game.save();
+
+            // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
             res.json({
                 game,
                 user: {

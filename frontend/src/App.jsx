@@ -212,152 +212,158 @@ function AppContent() {
 
   const hit = async (handIndex = 0) => {
     try {
-      if (!game?._id) {
-        console.error('Oyun ID bulunamadı');
-        setError('Aktif oyun bulunamadı');
-        return;
-      }
-
-      console.log('Kart çekme isteği gönderiliyor:', {
-        gameId: game._id,
-        gameStatus: game.status,
-        playerStatus: game.players[handIndex]?.status,
-        handIndex
-      });
-
-      const response = await axios.post(
-        `${API_URL}/game/hit/single/${game._id}`,
-        { handIndex },
-        { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
+        if (!game?._id) {
+            console.error('Oyun ID bulunamadı');
+            setError('Aktif oyun bulunamadı');
+            return;
         }
-      );
-      
-      console.log('Kart çekme yanıtı:', response.data);
-      
-      if (response.data) {
-        setGame(response.data);
-        if (response.data.userChips !== undefined) {
-          setUser(prev => ({ ...prev, chips: response.data.userChips }));
+
+        console.log('Kart çekme isteği gönderiliyor:', {
+            gameId: game._id,
+            gameStatus: game.status,
+            playerStatus: game.players?.[handIndex]?.status,
+            handIndex
+        });
+
+        const response = await axios.post(
+            `${API_URL}/game/hit/single/${game._id}`,
+            { handIndex },
+            { 
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                } 
+            }
+        );
+        
+        console.log('Kart çekme yanıtı:', response.data);
+        
+        if (!response.data || !response.data.game) {
+            throw new Error('Sunucudan geçersiz yanıt alındı');
         }
-      } else {
-        throw new Error('Geçersiz sunucu yanıtı');
-      }
+
+        const { game: gameData, user: userData } = response.data;
+        
+        if (!gameData._id) {
+            throw new Error('Geçersiz oyun verisi');
+        }
+
+        console.log('Kart çekme işlemi başarılı:', gameData);
+        
+        setGame(gameData);
+        if (userData?.chips !== undefined) {
+            setUser(prev => ({ ...prev, chips: userData.chips }));
+        }
     } catch (error) {
-      console.error('Kart çekme hatası:', {
-        error,
-        response: error.response?.data,
-        status: error.response?.status,
-        message: error.message
-      });
-      
-      let errorMessage = 'Kart çekilirken bir hata oluştu';
-      if (error.response?.status === 404) {
-        errorMessage = 'Oyun bulunamadı veya sıra sizde değil';
-      }
-      
-      setError(
-        error.response?.data?.message || 
-        errorMessage
-      );
+        console.error('Kart çekme hatası:', {
+            error,
+            response: error.response?.data,
+            status: error.response?.status,
+            message: error.message
+        });
+        
+        let errorMessage = 'Kart çekilirken bir hata oluştu';
+        if (error.response?.status === 404) {
+            errorMessage = 'Oyun bulunamadı veya sıra sizde değil';
+        }
+        
+        setError(
+            error.response?.data?.message || 
+            errorMessage
+        );
     }
-  };
+};
 
   const stand = async (handIndex = 0) => {
     try {
-      if (!game?._id) {
-        console.error('Oyun ID bulunamadı');
-        setError('Aktif oyun bulunamadı');
-        return;
-      }
-
-      if (game.status !== 'playing' || game.players[handIndex]?.status !== 'playing') {
-        setError('Şu anda stand yapamazsınız');
-        return;
-      }
-
-      console.log('Stand isteği gönderiliyor:', {
-        gameId: game._id,
-        gameStatus: game.status,
-        playerStatus: game.players[handIndex]?.status,
-        handIndex
-      });
-
-      const response = await axios.post(
-        `${API_URL}/game/stand/single/${game._id}`,
-        { handIndex },
-        { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
+        if (!game?._id) {
+            console.error('Oyun ID bulunamadı');
+            setError('Aktif oyun bulunamadı');
+            return;
         }
-      );
-      
-      console.log('Stand yanıtı:', response.data);
-      
-      if (!response.data) {
-        throw new Error('Sunucudan yanıt alınamadı');
-      }
 
-      const gameData = response.data;
-      
-      if (!gameData || !gameData._id) {
-        throw new Error('Geçersiz oyun verisi');
-      }
+        const currentPlayer = game?.players?.[handIndex];
+        if (!currentPlayer || game?.status !== 'playing' || currentPlayer?.status !== 'playing') {
+            setError('Şu anda stand yapamazsınız');
+            return;
+        }
 
-      console.log('Stand işlemi başarılı:', gameData);
-      
-      setGame(gameData);
-      if (gameData.userChips !== undefined) {
-        setUser(prev => ({ ...prev, chips: gameData.userChips }));
-      }
-      
+        console.log('Stand isteği gönderiliyor:', {
+            gameId: game._id,
+            gameStatus: game.status,
+            playerStatus: currentPlayer.status,
+            handIndex
+        });
+
+        const response = await axios.post(
+            `${API_URL}/game/stand/single/${game._id}`,
+            { handIndex },
+            { 
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                } 
+            }
+        );
+        
+        console.log('Stand yanıtı:', response.data);
+        
+        if (!response.data || !response.data.game) {
+            throw new Error('Sunucudan geçersiz yanıt alındı');
+        }
+
+        const { game: gameData, user: userData } = response.data;
+        
+        if (!gameData._id) {
+            throw new Error('Geçersiz oyun verisi');
+        }
+
+        console.log('Stand işlemi başarılı:', gameData);
+        
+        setGame(gameData);
+        if (userData?.chips !== undefined) {
+            setUser(prev => ({ ...prev, chips: userData.chips }));
+        }
+        
     } catch (error) {
-      console.error('Stand hatası:', {
-        error,
-        response: error.response?.data,
-        status: error.response?.status,
-        message: error.message
-      });
-      
-      let errorMessage = 'Stand işlemi yapılırken bir hata oluştu';
-      if (error.response?.status === 400) {
-        errorMessage = 'Geçersiz hamle: Stand yapılamıyor';
-      } else if (error.response?.status === 404) {
-        errorMessage = 'Oyun bulunamadı';
-      }
-      
-      setError(
-        error.response?.data?.message || 
-        errorMessage
-      );
+        console.error('Stand hatası:', {
+            error,
+            response: error.response?.data,
+            status: error.response?.status,
+            message: error.message
+        });
+        
+        let errorMessage = 'Stand işlemi yapılırken bir hata oluştu';
+        if (error.response?.status === 400) {
+            errorMessage = 'Geçersiz hamle: Stand yapılamıyor';
+        } else if (error.response?.status === 404) {
+            errorMessage = 'Oyun bulunamadı';
+        }
+        
+        setError(
+            error.response?.data?.message || 
+            errorMessage
+        );
     }
-  };
+};
 
   // Otomatik blackjack kontrolü
   useEffect(() => {
     const checkBlackjack = async () => {
-      if (game && game.status === 'playing') {
+      if (game?.status === 'playing' && game?.players?.length > 0) {
         const player = game.players[0];
-        if (player && player.status === 'playing') {
-          const playerHand = player.hand || [];
-          if (playerHand.length === 2) {
-            const value = calculateHandValue(playerHand);
-            if (value === 21) {
-              console.log('Blackjack tespit edildi, otomatik stand yapılıyor');
-              await stand();
-            }
+        if (player?.status === 'playing' && player?.hand?.length === 2) {
+          const value = calculateHandValue(player.hand);
+          if (value === 21) {
+            console.log('Blackjack tespit edildi, otomatik stand yapılıyor');
+            await stand();
           }
         }
       }
     };
 
     checkBlackjack();
-  }, [game?.players[0]?.hand]);
+  }, [game?.players?.[0]?.hand]);
 
   // Login ve Register arasında geçiş fonksiyonları
   const handleSwitchToRegister = () => {
