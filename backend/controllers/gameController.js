@@ -495,7 +495,13 @@ const gameController = {
 
             // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
             res.json({
-                game,
+                game: {
+                    _id: game._id,
+                    players: game.players,
+                    dealerHand: game.dealerHand,
+                    status: game.status,
+                    deck: game.deck
+                },
                 user: {
                     chips: user.chips
                 }

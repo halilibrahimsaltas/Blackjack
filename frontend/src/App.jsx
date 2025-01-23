@@ -201,14 +201,67 @@ function AppContent() {
 
   const split = async () => {
     try {
-      const response = await axios.post(`${API_URL}/game/split/${game._id}`)
-      setGame(response.data.game)
-      setUser(prev => ({ ...prev, chips: response.data.userChips }))
+        if (!game?._id) {
+            console.error('Oyun ID bulunamadı');
+            setError('Aktif oyun bulunamadı');
+            return;
+        }
+
+        console.log('Split isteği gönderiliyor:', {
+            gameId: game._id,
+            currentChips: user.chips
+        });
+
+        const response = await axios.post(
+            `${API_URL}/game/split/${game._id}`,
+            {},
+            { 
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                } 
+            }
+        );
+
+        console.log('Split yanıtı:', response.data);
+
+        if (!response.data || !response.data.game) {
+            throw new Error('Sunucudan geçersiz yanıt alındı');
+        }
+
+        const { game: gameData, user: userData } = response.data;
+        
+        if (!gameData._id) {
+            throw new Error('Geçersiz oyun verisi');
+        }
+
+        console.log('Split işlemi başarılı:', {
+            game: gameData,
+            userChips: userData?.chips
+        });
+        
+        setGame(gameData);
+        if (userData?.chips !== undefined) {
+            setUser(prev => ({ ...prev, chips: userData.chips }));
+        }
     } catch (error) {
-      console.error('Split yapılamadı:', error)
-      alert(error.response?.data?.message || 'Split yapılırken bir hata oluştu')
+        console.error('Split hatası:', {
+            error,
+            response: error.response?.data,
+            status: error.response?.status,
+            message: error.message
+        });
+        
+        let errorMessage = 'Split yapılırken bir hata oluştu';
+        if (error.response?.status === 400) {
+            errorMessage = error.response?.data?.message || 'Split yapılamıyor';
+        } else if (error.response?.status === 404) {
+            errorMessage = 'Oyun bulunamadı';
+        }
+        
+        setError(errorMessage);
     }
-  }
+};
 
   const hit = async (handIndex = 0) => {
     try {
