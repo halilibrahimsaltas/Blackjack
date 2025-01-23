@@ -24,6 +24,10 @@ const gameSchema = new mongoose.Schema({
             type: String,
             enum: ['waiting', 'playing', 'stand', 'bust', 'blackjack', 'won', 'lost', 'push'],
             default: 'waiting'
+        },
+        isSplitHand: {
+            type: Boolean,
+            default: false
         }
     }],
     dealerHand: [{
@@ -59,6 +63,10 @@ const gameSchema = new mongoose.Schema({
     deck: [{
         type: String
     }],
+    hasSplit: {
+        type: Boolean,
+        default: false
+    },
     createdAt: {
         type: Date,
         default: Date.now

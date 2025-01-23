@@ -99,12 +99,47 @@ const useGame = () => {
         }
     };
 
+    const split = async () => {
+        try {
+            const token = getToken();
+            if (!token) {
+                throw new Error('Oturum açmanız gerekiyor');
+            }
+
+            if (!game || !game._id) {
+                throw new Error('Aktif oyun bulunamadı');
+            }
+
+            const response = await axios.post(`${API_URL}/game/split/${game._id}`,
+                {},
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            
+            setGame(response.data.game);
+            
+            const auth = localStorage.getItem('blackjack_auth');
+            if (auth) {
+                const authData = JSON.parse(auth);
+                authData.user.chips = response.data.user.chips;
+                localStorage.setItem('blackjack_auth', JSON.stringify(authData));
+            }
+
+            setError(null);
+            return response.data.game;
+        } catch (error) {
+            console.error('Split yapılamadı:', error);
+            setError('Split işlemi sırasında bir hata oluştu');
+            throw error;
+        }
+    };
+
     return {
         game,
         error,
         startGame,
         hit,
-        stand
+        stand,
+        split
     };
 };
 

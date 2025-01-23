@@ -116,15 +116,15 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, on
   console.log('Game Status:', game.status, 'Player Status:', playerStatus, 'IsGameOver:', isGameOver);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-between p-8 bg-green-800 rounded-lg">
+    <div className="relative w-full h-full flex flex-col items-center justify-between p-8 bg-green-800 rounded-lg min-h-[800px]">
    
       {/* Krupiye Alanı */}
-      <div className="flex flex-col items-center mb-8 mt-12">
+      <div className="flex flex-col items-center mb-8">
         <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
           KRUPİYE {game.status === 'playing' && `(${calculateHandValue([game.dealerHand[0]])})`}
           {game.status !== 'playing' && `(${dealerValue})`}
         </h3>
-        <div className="flex gap-4">
+        <div className="flex gap-4 justify-center">
           {game.dealerHand.map((card, index) => (
             <Card 
               key={index} 
@@ -135,62 +135,67 @@ const GameTable = ({ game, onHit, onStand, onStartGame, onSplit, chips, user, on
       </div>
 
       {/* Oyuncu Alanı */}
-      <div className="flex flex-col items-center">
-        <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
-          {user.username.charAt(0).toUpperCase() + user.username.slice(1)} ({playerValue}) 
-          <span className="text-xl font-sans ml-3 text-yellow-300">- Bahis: {currentBet}</span>
-        </h3>
-        <div className="flex gap-4">
-          {playerHand.map((card, index) => (
-            <Card key={index} card={card} />
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
+        <div className="w-full max-w-4xl">
+          {game.players.map((player, index) => (
+            <div key={index} className="mb-12 flex flex-col items-center">
+              <h3 className="text-3xl font-bold font-serif tracking-widest text-yellow-400 mb-4 drop-shadow-lg">
+                {index === 0 ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'El ' + (index + 1)} 
+                ({calculateHandValue(player.hand)}) 
+                <span className="text-xl font-sans ml-3 text-yellow-300">- Bahis: {player.bet}</span>
+              </h3>
+              <div className="flex gap-4 justify-center min-h-[150px]">
+                {player.hand.map((card, cardIndex) => (
+                  <Card key={cardIndex} card={card} />
+                ))}
+              </div>
+              
+              {/* Her el için ayrı kontrol butonları */}
+              {!isGameOver && player.status === 'playing' && (
+                <div className="flex gap-4 mt-4">
+                  <button
+                    onClick={() => onHit(index)}
+                    className="px-6 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold"
+                  >
+                    Kart Çek
+                  </button>
+                  <button
+                    onClick={() => onStand(index)}
+                    className="px-6 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold"
+                  >
+                    Dur
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Kontrol Butonları */}
-      {!isGameOver ? (
-        <div className="flex gap-4 mt-8">
-          <button
-            onClick={onHit}
-            disabled={!canHit}
-            className={`px-6 py-2 rounded-lg ${
-              canHit
-                ? 'bg-blue-500 hover:bg-blue-600'
-                : 'bg-gray-500 cursor-not-allowed'
-            } text-white font-bold`}
-          >
-            Kart Çek
-          </button>
-          <button
-            onClick={onStand}
-            disabled={!canStand}
-            className={`px-6 py-2 rounded-lg ${
-              canStand
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-gray-500 cursor-not-allowed'
-            } text-white font-bold`}
-          >
-            Dur
-          </button>
-          {canSplitHand && (
+      {/* Ana Kontrol Butonları */}
+      <div className="mt-auto">
+        {!isGameOver && game.players[0].status === 'playing' ? (
+          <div className="flex gap-4 mt-8">
+            {canSplitHand && (
+              <button
+                onClick={onSplit}
+                className="px-6 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white font-bold"
+              >
+                Böl
+              </button>
+            )}
+          </div>
+        ) : isGameOver && (
+          <div className="flex gap-4 mt-8">
             <button
-              onClick={onSplit}
-              className="px-6 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white font-bold"
+              onClick={handleNewGameClick}
+              className="px-6 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
             >
-              Böl
+              Yeni El
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="flex gap-4 mt-8">
-          <button
-            onClick={handleNewGameClick}
-            className="px-6 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-bold"
-          >
-            Yeni El
-          </button>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Otomatik Kazanma Mesajı */}
       {autoWinMessage && (

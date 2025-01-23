@@ -210,7 +210,7 @@ function AppContent() {
     }
   }
 
-  const hit = async () => {
+  const hit = async (handIndex = 0) => {
     try {
       if (!game?._id) {
         console.error('Oyun ID bulunamadı');
@@ -221,12 +221,13 @@ function AppContent() {
       console.log('Kart çekme isteği gönderiliyor:', {
         gameId: game._id,
         gameStatus: game.status,
-        playerStatus: game.players[0]?.status
+        playerStatus: game.players[handIndex]?.status,
+        handIndex
       });
 
       const response = await axios.post(
         `${API_URL}/game/hit/single/${game._id}`,
-        {},
+        { handIndex },
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -265,7 +266,7 @@ function AppContent() {
     }
   };
 
-  const stand = async () => {
+  const stand = async (handIndex = 0) => {
     try {
       if (!game?._id) {
         console.error('Oyun ID bulunamadı');
@@ -273,7 +274,7 @@ function AppContent() {
         return;
       }
 
-      if (game.status !== 'playing' || game.players[0]?.status !== 'playing') {
+      if (game.status !== 'playing' || game.players[handIndex]?.status !== 'playing') {
         setError('Şu anda stand yapamazsınız');
         return;
       }
@@ -281,12 +282,13 @@ function AppContent() {
       console.log('Stand isteği gönderiliyor:', {
         gameId: game._id,
         gameStatus: game.status,
-        playerStatus: game.players[0]?.status
+        playerStatus: game.players[handIndex]?.status,
+        handIndex
       });
 
       const response = await axios.post(
         `${API_URL}/game/stand/single/${game._id}`,
-        {},
+        { handIndex },
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -301,7 +303,6 @@ function AppContent() {
         throw new Error('Sunucudan yanıt alınamadı');
       }
 
-      // Backend yanıtını kontrol et
       const gameData = response.data;
       
       if (!gameData || !gameData._id) {
