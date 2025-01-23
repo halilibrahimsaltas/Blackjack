@@ -4,7 +4,7 @@ const Navbar = ({ user, onLogout, showGameModeButton = true }) => {
   const navigate = useNavigate();
 
   return (
-    <nav className="bg-gradient-to-b from-black/60 to-transparent">
+    <nav className="bg-gradient-to-b from-black/20 to-transparent">
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-4 w-1/3">
