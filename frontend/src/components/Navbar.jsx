@@ -72,7 +72,7 @@ const Navbar = ({ user, onLogout, showGameModeButton = true }) => {
             >
               ✕
             </button>
-            <h2 className="text-3xl font-bold mb-6 text-center text-yellow-500">Skor Tablosu</h2>
+            
             <ScoreBoard />
           </div>
         </div>

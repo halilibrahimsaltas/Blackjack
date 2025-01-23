@@ -47,6 +47,15 @@ const RoomList = ({ onRoomJoin }) => {
   const handleJoinRoom = async (roomId) => {
     try {
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+        return;
+      }
+
+      console.log('Odaya katılma isteği gönderiliyor:', roomId);
+      
       const response = await axios.post(
         `${API_URL}/room/join/${roomId}`,
         {},
@@ -59,11 +68,24 @@ const RoomList = ({ onRoomJoin }) => {
       );
       
       console.log('Odaya katılma başarılı:', response.data);
-      onRoomJoin(roomId);
-      navigate(`/room/${roomId}`);
+      
+      if (response.data && response.data._id) {
+        if (onRoomJoin) {
+          onRoomJoin(roomId);
+        }
+        navigate(`/room/${roomId}`);
+      } else {
+        throw new Error('Sunucudan geçersiz yanıt alındı');
+      }
     } catch (error) {
-      console.error('Odaya katılma hatası:', error);
-      setError('Odaya katılırken bir hata oluştu');
+      console.error('Odaya katılma hatası:', error.response || error);
+      
+      if (error.response?.status === 401) {
+        setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Odaya katılırken bir hata oluştu');
+      }
     }
   };
 
@@ -100,25 +122,21 @@ const RoomList = ({ onRoomJoin }) => {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-xl font-bold text-yellow-500 mb-2">
-                  Oda #{room._id.slice(-4)}
+                  {room.name || `Oda #${room._id.slice(-4)}`}
                 </h3>
                 <p className="text-sm text-gray-400">
-                  {room.players.length} / 4 Oyuncu
+                  {room.currentPlayers?.length || 0} / {room.maxPlayers || 4} Oyuncu
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-yellow-500">
                   Min: {room.minBet}
                 </span>
-                <span className="text-yellow-500/30">|</span>
-                <span className="text-sm font-medium text-yellow-500">
-                  Max: {room.maxBet}
-                </span>
               </div>
             </div>
             
             <div className="flex flex-wrap gap-2 mb-4">
-              {room.players.map((player, index) => (
+              {room.currentPlayers?.map((player, index) => (
                 <div 
                   key={index}
                   className="px-3 py-1 rounded-full bg-yellow-500/10 text-sm text-yellow-500"
@@ -130,14 +148,14 @@ const RoomList = ({ onRoomJoin }) => {
 
             <button
               onClick={() => handleJoinRoom(room._id)}
-              disabled={room.players.length >= 4}
+              disabled={room.currentPlayers?.length >= (room.maxPlayers || 4)}
               className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${
-                room.players.length >= 4
+                room.currentPlayers?.length >= (room.maxPlayers || 4)
                   ? 'bg-gray-500 cursor-not-allowed'
                   : 'bg-yellow-500 hover:bg-yellow-600'
               }`}
             >
-              {room.players.length >= 4 ? 'Oda Dolu' : 'Katıl'}
+              {room.currentPlayers?.length >= (room.maxPlayers || 4) ? 'Oda Dolu' : 'Katıl'}
             </button>
           </div>
         ))}

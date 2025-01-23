@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaLock, FaUnlock, FaUsers, FaCog } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 const CreateRoom = ({ onRoomCreated }) => {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -25,13 +27,26 @@ const CreateRoom = ({ onRoomCreated }) => {
     e.preventDefault();
 
     try {
+      console.log('Oda oluşturma isteği gönderiliyor...');
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
       const response = await axios.post(
         'http://localhost:5000/api/room/create',
         formData,
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
       );
+
+      console.log('Sunucu yanıtı:', response.data);
 
       if (response.data && response.data._id) {
         toast.success('Oda başarıyla oluşturuldu');
@@ -47,12 +62,19 @@ const CreateRoom = ({ onRoomCreated }) => {
         if (onRoomCreated) {
           onRoomCreated(response.data);
         }
+
+        navigate(`/room/${response.data._id}`);
       } else {
+        console.error('Geçersiz sunucu yanıtı:', response.data);
         toast.error('Oda oluşturulurken bir hata oluştu');
       }
     } catch (error) {
-      console.error('Oda oluşturma hatası:', error);
-      toast.error(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
+      console.error('Oda oluşturma hatası:', error.response || error);
+      if (error.response?.status === 401) {
+        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+      } else {
+        toast.error(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
+      }
     }
   };
 

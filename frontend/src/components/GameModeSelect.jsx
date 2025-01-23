@@ -17,11 +17,25 @@ const GameModeSelect = () => {
     navigate('/game');
   };
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = async (e) => {
+    e.preventDefault();
     try {
       setError(null);
       const token = localStorage.getItem('token');
-      console.log('Oda oluşturma isteği gönderiliyor...');
+      
+      if (!token) {
+        setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+        return;
+      }
+
+      console.log('Oda oluşturma isteği gönderiliyor...', {
+        name: roomName,
+        maxPlayers: 4,
+        password: isPrivate ? password : '',
+        minBet,
+        autoStart: false
+      });
       
       const response = await axios.post(
         `${API_URL}/room/create`,
@@ -41,11 +55,22 @@ const GameModeSelect = () => {
       );
 
       console.log('Oda başarıyla oluşturuldu:', response.data);
-      setShowCreateRoom(false);
-      navigate(`/room/${response.data._id}`);
+      
+      if (response.data && response.data._id) {
+        setShowCreateRoom(false);
+        navigate(`/room/${response.data._id}`);
+      } else {
+        throw new Error('Sunucudan geçersiz yanıt alındı');
+      }
     } catch (error) {
-      console.error('Oda oluşturma hatası:', error);
-      setError(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
+      console.error('Oda oluşturma hatası:', error.response || error);
+      
+      if (error.response?.status === 401) {
+        setError('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
+        navigate('/login');
+      } else {
+        setError(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
+      }
     }
   };
 

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { deleteUserRooms } = require('./roomController');
 
 // Kayıt ol
 const register = async (req, res) => {
@@ -90,8 +91,27 @@ const getProfile = async (req, res) => {
     }
 };
 
+// Çıkış yap
+const logout = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        
+        // Kullanıcının kurucusu olduğu odaları sil
+        await deleteUserRooms(userId);
+        
+        // Socket.io ile diğer oyunculara bildir
+        req.io?.emit('roomsUpdated');
+        
+        res.json({ message: 'Başarıyla çıkış yapıldı' });
+    } catch (error) {
+        console.error('Çıkış yapma hatası:', error);
+        res.status(500).json({ message: 'Çıkış yapılırken bir hata oluştu' });
+    }
+};
+
 module.exports = {
     register,
     login,
-    getProfile
+    getProfile,
+    logout
 }; 
