@@ -42,12 +42,19 @@ exports.createRoom = async (req, res) => {
         userId,
         username: user.username,
         chips: user.chips,
-        position: 1
+        position: 1,
+        isOwner: true,
+        isReady: true
       }]
     });
 
     await room.save();
-    res.status(201).json(room);
+    
+    const populatedRoom = await Room.findById(room._id)
+      .select('-password')
+      .populate('currentPlayers.userId', 'username chips');
+    
+    res.status(201).json(populatedRoom);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

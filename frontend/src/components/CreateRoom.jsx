@@ -33,20 +33,25 @@ const CreateRoom = ({ onRoomCreated }) => {
         }
       );
 
-      toast.success('Oda başarıyla oluşturuldu');
-      setShowModal(false);
-      setFormData({
-        name: '',
-        maxPlayers: 4,
-        password: '',
-        minBet: 10,
-        autoStart: false
-      });
-      
-      if (onRoomCreated) {
-        onRoomCreated(response.data);
+      if (response.data && response.data._id) {
+        toast.success('Oda başarıyla oluşturuldu');
+        setShowModal(false);
+        setFormData({
+          name: '',
+          maxPlayers: 4,
+          password: '',
+          minBet: 10,
+          autoStart: false
+        });
+        
+        if (onRoomCreated) {
+          onRoomCreated(response.data);
+        }
+      } else {
+        toast.error('Oda oluşturulurken bir hata oluştu');
       }
     } catch (error) {
+      console.error('Oda oluşturma hatası:', error);
       toast.error(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
     }
   };

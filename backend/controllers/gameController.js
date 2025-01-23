@@ -3,6 +3,31 @@ const Room = require('../models/Room');
 const User = require('../models/User');
 const { createDeck, calculateHandValue, determineWinner } = require('../utils/gameLogic');
 
+// Oyun sonuçlarını kaydet
+const saveGameResults = async (game, userId) => {
+    try {
+        const user = await User.findById(userId);
+        if (!user) return;
+
+        const playerResults = game.players.filter(p => p.playerId.toString() === userId);
+        
+        // Oyun sayısını artır
+        user.totalGames += 1;
+        
+        // Kazanan oyunları kontrol et
+        for (const player of playerResults) {
+            if (player.status === 'won' || player.status === 'blackjack') {
+                user.gamesWon += 1;
+                break; // Bir oyuncu sadece bir kez kazanabilir
+            }
+        }
+        
+        await user.save();
+    } catch (error) {
+        console.error('İstatistik kaydetme hatası:', error);
+    }
+};
+
 const gameController = {
     // Bahis koy
     placeBet: async (req, res) => {
@@ -160,6 +185,9 @@ const gameController = {
                     await user.save();
                 }
 
+                // Oyun sonuçlarını kaydet
+                await saveGameResults(game, userId);
+
                 await game.save();
 
                 // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
@@ -172,7 +200,9 @@ const gameController = {
                         deck: game.deck
                     },
                     user: {
-                        chips: user.chips
+                        chips: user.chips,
+                        totalGames: user.totalGames,
+                        gamesWon: user.gamesWon
                     }
                 });
             }
@@ -286,6 +316,9 @@ const gameController = {
                     await user.save();
                 }
 
+                // Oyun sonuçlarını kaydet
+                await saveGameResults(game, userId);
+
                 await game.save();
 
                 // Güncellenmiş oyun ve kullanıcı bilgilerini döndür
@@ -298,7 +331,9 @@ const gameController = {
                         deck: game.deck
                     },
                     user: {
-                        chips: user.chips
+                        chips: user.chips,
+                        totalGames: user.totalGames,
+                        gamesWon: user.gamesWon
                     }
                 });
             }

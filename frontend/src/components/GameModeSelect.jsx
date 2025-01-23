@@ -26,10 +26,11 @@ const GameModeSelect = () => {
       const response = await axios.post(
         `${API_URL}/room/create`,
         {
-          minBet: 10,
-          maxBet: 1000,
+          name: roomName || `Oda ${Math.floor(Math.random() * 1000)}`,
           maxPlayers: 4,
-          isPrivate: false
+          password: isPrivate ? password : '',
+          minBet: minBet,
+          autoStart: false
         },
         {
           headers: {
@@ -40,9 +41,10 @@ const GameModeSelect = () => {
       );
 
       console.log('Oda başarıyla oluşturuldu:', response.data);
+      setShowCreateRoom(false);
       navigate(`/room/${response.data._id}`);
     } catch (error) {
-      console.error('Oda oluşturma hatası:', error.response || error);
+      console.error('Oda oluşturma hatası:', error);
       setError(error.response?.data?.message || 'Oda oluşturulurken bir hata oluştu');
     }
   };
@@ -80,7 +82,7 @@ const GameModeSelect = () => {
               Arkadaşlarınla oynamak için yeni bir oda oluştur!
             </p>
             <button
-              onClick={handleCreateRoom}
+              onClick={() => setShowCreateRoom(true)}
               className="w-full py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white font-medium transition-all"
             >
               Oda Oluştur
