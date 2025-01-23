@@ -461,7 +461,7 @@ function AppContent() {
                           className="text-gray-400 hover:text-white transition-colors"
                         >
                           ✕
-        </button>
+                        </button>
                       </div>
                       <ScoreBoard />
                     </div>
@@ -488,6 +488,17 @@ function AppContent() {
               <>
                 <div className="container mx-auto px-4 py-8">
                   <RoomContainer user={user} />
+                </div>
+              </>
+            ) : <Navigate to="/login" />} 
+          />
+
+          <Route 
+            path="/scoreboard" 
+            element={user ? (
+              <>
+                <div className="container mx-auto px-4 py-8">
+                  <ScoreBoard />
                 </div>
               </>
             ) : <Navigate to="/login" />} 

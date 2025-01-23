@@ -25,6 +25,6 @@ router.post('/stand/single/:gameId', auth, stand);
 router.post('/stand/multi/:roomId', auth, stand);
 
 // Skor tablosu
-router.get('/scores', getScores);
+router.get('/scores', auth, getScores);
 
 module.exports = router; 
