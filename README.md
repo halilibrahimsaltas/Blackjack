@@ -10,6 +10,10 @@ Modern web teknolojileri ile geliştirilmiş, tek ve çok oyunculu modları dest
 - JWT tabanlı kimlik doğrulama
 - Skor tablosu ve istatistikler
 - Modern ve responsive tasarım
+- Görsel chip seçici ve bahis sistemi
+- El bölme özelliği
+- Gerçek zamanlı oyuncu etkileşimleri
+- Otomatik bahis hatırlama
 
 ## Teknolojiler 🛠
 
@@ -21,6 +25,7 @@ Modern web teknolojileri ile geliştirilmiş, tek ve çok oyunculu modları dest
 - Socket.io
 - JWT Authentication
 - Cors
+- Oyun mantığı modülleri
 
 ### Frontend
 
@@ -30,6 +35,7 @@ Modern web teknolojileri ile geliştirilmiş, tek ve çok oyunculu modları dest
 - Socket.io Client
 - Tailwind CSS
 - React Hot Toast
+- Animasyon kütüphaneleri
 
 ## Kurulum 🚀
 
@@ -85,6 +91,8 @@ npm run dev
 - Hızlı oyun deneyimi
 - Direkt oyun başlatma
 - Basitleştirilmiş arayüz
+- Otomatik bahis hatırlama
+- El bölme özelliği
 
 ### Çok Oyunculu
 
@@ -92,10 +100,12 @@ npm run dev
 - Gerçek zamanlı etkileşim
 - Sıralı oyun sistemi
 - Oda sahibi kontrolü
+- Minimum bahis limitleri
+- Görsel chip seçici
 
-## API Endpoints 🌐
+## Özellik Detayları
 
-Detaylı API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına bakın.
+Detaylı özellik listesi ve API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına bakın.
 
 ## Katkıda Bulunma 🤝
 
@@ -104,5 +114,3 @@ Detaylı API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına
 3. Değişikliklerinizi commit edin (`git commit -m 'Harika özellik eklendi'`)
 4. Branch'inizi push edin (`git push origin feature/amazing`)
 5. Pull Request oluşturun
-
-
