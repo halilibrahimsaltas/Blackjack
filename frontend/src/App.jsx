@@ -704,6 +704,8 @@ function AppContent() {
             path="/" 
             element={user ? <Navigate to="/select-mode" /> : <Navigate to="/login" />} 
           />
+
+          <Route path="/multiplayer/game/:roomId/:gameId" element={<MultiplayerGameTable />} />
         </Routes>
       </div>
     </div>

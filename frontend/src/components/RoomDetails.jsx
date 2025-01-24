@@ -3,8 +3,25 @@ import { FaUsers, FaPlay, FaPause, FaCrown, FaCheck, FaTimes } from 'react-icons
 
 const RoomDetails = ({ room, user, onLeaveRoom, onToggleReady, onStartGame, onKickPlayer }) => {
   const [countdown, setCountdown] = useState(null);
-  const isOwner = room?.currentPlayers.find(p => p.userId === user._id)?.isOwner;
-  const currentPlayer = room?.currentPlayers.find(p => p.userId === user._id);
+  
+  // userId kontrolünü düzelt
+  const isOwner = room?.currentPlayers.find(p => {
+    const playerId = p.userId._id || p.userId;
+    return playerId === user._id;
+  })?.isOwner;
+
+  const currentPlayer = room?.currentPlayers.find(p => {
+    const playerId = p.userId._id || p.userId;
+    return playerId === user._id;
+  });
+
+  console.log('Oda Detayları:', {
+    currentPlayers: room?.currentPlayers,
+    userId: user._id,
+    isOwner,
+    currentPlayer,
+    status: room?.status
+  });
 
   useEffect(() => {
     if (countdown > 0) {
@@ -85,7 +102,7 @@ const RoomDetails = ({ room, user, onLeaveRoom, onToggleReady, onStartGame, onKi
             Hazır
           </button>
         )}
-        {currentPlayer && currentPlayer.isReady && (
+        {currentPlayer && currentPlayer.isReady && !currentPlayer.isOwner && (
           <button
             onClick={onToggleReady}
             className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white rounded-lg font-semibold transition-all duration-300"
@@ -93,12 +110,12 @@ const RoomDetails = ({ room, user, onLeaveRoom, onToggleReady, onStartGame, onKi
             Beklemeye Al
           </button>
         )}
-        {isOwner && room.status === 'waiting' && room.currentPlayers.every(p => p.isReady) && (
+        {isOwner && room.status === 'waiting' && (
           <button
             onClick={onStartGame}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold transition-all duration-300"
           >
-            Oyunu Başlat
+            Oyunu Başlat ({room.currentPlayers.length} Oyuncu)
           </button>
         )}
         <button

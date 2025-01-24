@@ -53,6 +53,15 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
     }
   };
 
+  const handleStackClick = (chipValue) => {
+    const index = selectedChips.map(chip => chip.value).lastIndexOf(chipValue);
+    if (index !== -1) {
+      const newChips = [...selectedChips];
+      newChips.splice(index, 1);
+      setSelectedChips(newChips);
+    }
+  };
+
   const handleConfirm = () => {
     if (totalBet >= 5) {
       onBetConfirm(totalBet);
@@ -121,7 +130,7 @@ const ChipSelector = ({ maxChips, onBetConfirm, defaultBet = 10 }) => {
                 {sameValueChips.map((_, stackIndex) => (
                   <div
                     key={stackIndex}
-                    onClick={() => handleChipRightClick(new Event('click'), chip.value)}
+                    onClick={() => handleStackClick(chip.value)}
                     className="absolute left-0 w-full h-full transition-transform hover:scale-110"
                     style={{
                       top: `${stackIndex * -4}px`,

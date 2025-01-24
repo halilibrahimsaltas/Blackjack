@@ -393,39 +393,35 @@ const gameController = {
                 return res.status(403).json({ message: 'Oyunu sadece oda sahibi başlatabilir' });
             }
 
-            // Mevcut oyunu bul
+            // Mevcut oyunu bul veya yeni oyun oluştur
             let game = await Game.findOne({ room: roomId, status: 'betting' });
             if (!game) {
-                return res.status(400).json({ message: 'Aktif bir oyun bulunamadı' });
+                game = new Game({
+                    room: roomId,
+                    players: [],
+                    dealerHand: [],
+                    deck: createDeck(),
+                    status: 'betting'
+                });
             }
 
-            // Tüm oyuncuların bahis koyup koymadığını kontrol et
-            const allPlayersHaveBet = game.players.length > 0 && game.players.every(player => player.bet > 0);
-            if (!allPlayersHaveBet && !req.body.force) {
-                return res.status(400).json({ message: 'Tüm oyuncular bahis koymadan oyun başlatılamaz' });
-            }
-
-            // Desteyi karıştır
-            game.deck = shuffleDeck(game.deck);
-
-            // Her oyuncuya ikişer kart dağıt
-            for (let i = 0; i < 2; i++) {
-                for (let player of game.players) {
-                    player.hand.push(game.deck.pop());
-                }
-                // Krupiyeye de bir kart ver
-                game.dealerHand.push(game.deck.pop());
-            }
-
-            // Oyun durumunu güncelle
-            game.status = 'playing';
-            game.currentPlayerIndex = 0;
+            // Tüm oyuncuları oyuna ekle (oda sahibi otomatik olarak hazır)
+            game.players = room.currentPlayers.map(player => {
+                const playerId = player.userId._id || player.userId;
+                return {
+                    playerId,
+                    hand: [],
+                    bet: 0,
+                    status: 'betting'
+                };
+            });
 
             // Oyunu kaydet
             await game.save();
 
             // Odanın durumunu güncelle
-            room.status = 'playing';
+            room.status = 'betting';
+            room.currentGame = game._id;
             await room.save();
 
             // Socket.io ile diğer oyunculara bildir
@@ -642,6 +638,158 @@ const gameController = {
         } catch (error) {
             console.error('Oyun detayları alınırken hata:', error);
             res.status(500).json({ message: 'Sunucu hatası' });
+        }
+    },
+
+    // Çok oyunculu bahis işlemi
+    placeBetMulti: async (req, res) => {
+        try {
+            console.log('Gelen bahis verisi:', req.body);
+            console.log('Kullanıcı bilgisi:', req.user);
+
+            const { roomId, betAmount } = req.body;
+            const userId = req.user.userId;
+
+            if (!roomId || !betAmount) {
+                return res.status(400).json({ 
+                    message: 'Eksik parametreler',
+                    required: { roomId: !!roomId, betAmount: !!betAmount }
+                });
+            }
+
+            // Odayı kontrol et
+            const room = await Room.findById(roomId);
+            if (!room) {
+                return res.status(404).json({ message: 'Oda bulunamadı' });
+            }
+
+            // Kullanıcının odada olup olmadığını kontrol et
+            const playerInRoom = room.currentPlayers.find(p => 
+                (p.userId._id || p.userId).toString() === userId
+            );
+            if (!playerInRoom) {
+                return res.status(403).json({ message: 'Bu odada değilsiniz' });
+            }
+
+            // Kullanıcıyı kontrol et
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+            }
+
+            if (user.chips < betAmount) {
+                return res.status(400).json({ 
+                    message: 'Yetersiz bakiye',
+                    currentChips: user.chips,
+                    requiredChips: betAmount
+                });
+            }
+
+            // Minimum bahis kontrolü
+            if (betAmount < room.minBet) {
+                return res.status(400).json({ 
+                    message: 'Minimum bahis miktarının altında',
+                    minBet: room.minBet,
+                    providedBet: betAmount
+                });
+            }
+
+            // Mevcut oyunu kontrol et
+            let game = await Game.findOne({ 
+                room: roomId, 
+                status: 'betting',
+                'players.playerId': userId 
+            });
+
+            // Eğer oyuncu zaten bahis koymuşsa hata ver
+            if (game) {
+                return res.status(400).json({ message: 'Zaten bahis yapmışsınız' });
+            }
+
+            // Yeni oyun oluştur veya mevcut oyuna katıl
+            game = await Game.findOne({ room: roomId, status: 'betting' });
+            if (!game) {
+                game = new Game({
+                    room: roomId,
+                    gameType: 'multi',
+                    status: 'betting',
+                    deck: createDeck(),
+                    players: []
+                });
+            }
+
+            // Oyuncuyu oyuna ekle
+            game.players.push({
+                playerId: userId,
+                bet: betAmount,
+                hand: [],
+                status: 'betting'
+            });
+
+            // Kullanıcının chip'lerini güncelle
+            user.chips -= betAmount;
+            await user.save();
+
+            await game.save();
+
+            // Odanın durumunu güncelle
+            room.currentGame = game._id;
+            await room.save();
+
+            // Socket ile diğer oyunculara bildir
+            req.io.to(roomId).emit('gameBet', {
+                gameId: game._id,
+                userId,
+                betAmount
+            });
+
+            res.json(game);
+        } catch (error) {
+            console.error('Bahis hatası detayları:', {
+                error: error.message,
+                stack: error.stack,
+                body: req.body,
+                user: req.user
+            });
+            res.status(500).json({ 
+                message: 'Bahis yapılırken bir hata oluştu',
+                details: error.message,
+                code: error.code
+            });
+        }
+    },
+
+    // Çok oyunculu oyun başlatma
+    startMultiplayerGame: async (req, res) => {
+        try {
+            const { roomId, gameId } = req.params;
+
+            const game = await Game.findById(gameId);
+            if (!game) {
+                return res.status(404).json({ message: 'Oyun bulunamadı' });
+            }
+
+            // Oyunu başlat
+            game.status = 'playing';
+            
+            // Her oyuncuya 2 kart dağıt
+            for (let player of game.players) {
+                player.hand = [game.deck.pop(), game.deck.pop()];
+                player.status = 'playing';
+            }
+
+            // Krupiyeye 2 kart dağıt
+            game.dealerHand = [game.deck.pop(), game.deck.pop()];
+            
+            await game.save();
+
+            // Socket ile oyun başlangıcını bildir
+            req.io.to(roomId).emit('gameStarted', game);
+
+            res.json(game);
+        } catch (error) {
+            console.error('Oyun başlatma hatası:', error);
+            res.status(500).json({ message: 'Oyun başlatılırken bir hata oluştu' });
         }
     }
 };

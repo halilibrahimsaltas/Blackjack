@@ -79,7 +79,7 @@ export default function MultiplayerBetForm() {
     return () => newSocket.disconnect();
   }, [roomId, navigate]);
 
-  const handleBetConfirm = async (betAmount) => {
+  const handleBetSubmit = async (selectedBet) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -88,46 +88,44 @@ export default function MultiplayerBetForm() {
         return;
       }
 
-      console.log('Bahis gönderiliyor:', {
-        roomId,
-        betAmount,
-        currentChips,
-        minBet
-      });
-
-      // Bahis koy
-      const betResponse = await axios.post(
-        `${API_URL}/game/bet/${roomId}`,
-        { bet: betAmount },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-
-      console.log('Bahis yanıtı:', betResponse.data);
-
-      // Eğer force start varsa oyunu başlat
-      if (location.state?.forceStart) {
-        const startResponse = await axios.post(
-          `${API_URL}/game/start/${roomId}`,
-          { force: true },
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-
-        if (startResponse.data) {
-          socket?.emit('gameStarted', {
-            roomId,
-            message: 'Oda sahibi oyunu başlattı!',
-            game: startResponse.data
-          });
+      const betData = {
+        roomId: room._id,
+        betAmount: selectedBet,
+        currentChips: currentChips,
+        minBet: minBet
+      };
+      
+      console.log('Bahis gönderiliyor: ', betData);
+      
+      const response = await axios.post(
+        `${API_URL}/game/bet/multi`, 
+        betData,
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }
-
-      // Oyun sayfasına yönlendir
-      navigate(`/game/${roomId}`);
-      toast.success('Bahis başarıyla yapıldı!');
+      );
+      
+      console.log('Bahis yanıtı: ', response.data);
+      
+      // Yeni oyun ID'sini al
+      const gameId = response.data._id;
+      
+      // Çok oyunculu oyun sayfasına yönlendir
+      navigate(`/multiplayer/game/${room._id}/${gameId}`);
       
     } catch (error) {
       console.error('Bahis hatası:', error);
-      toast.error(error.response?.data?.message || 'Bahis koyulurken bir hata oluştu');
+      console.error('Hata detayları:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      const errorMessage = error.response?.data?.message || 'Bahis yapılırken bir hata oluştu';
+      toast.error(errorMessage);
     }
   };
 
@@ -157,7 +155,7 @@ export default function MultiplayerBetForm() {
 
         <ChipSelector
           maxChips={currentChips}
-          onBetConfirm={handleBetConfirm}
+          onBetConfirm={handleBetSubmit}
           defaultBet={Math.min(minBet, currentChips)}
           minBet={minBet}
         />

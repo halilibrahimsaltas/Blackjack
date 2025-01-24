@@ -156,37 +156,35 @@ const RoomContainer = ({ user }) => {
         return;
       }
 
-      // Önce bahis formuna yönlendir
+      // Oda sahibi kontrolünü düzelt
+      const isOwner = room.currentPlayers.find(p => {
+        const playerId = p.userId._id || p.userId;
+        return playerId === user._id;
+      })?.isOwner;
+
+      console.log('Oyun Başlatma Kontrolü:', {
+        currentPlayers: room.currentPlayers,
+        userId: user._id,
+        isOwner
+      });
+
+      if (!isOwner) {
+        toast.error('Sadece oda sahibi oyunu başlatabilir!');
+        return;
+      }
+
+      // En az bir oyuncu olmalı
+      if (room.currentPlayers.length < 1) {
+        toast.error('Oyunu başlatmak için en az bir oyuncu gerekli!');
+        return;
+      }
+
+      // Bahis formuna yönlendir
       navigate(`/bet/${roomId}`, { 
         state: { 
           returnPath: `/room/${roomId}`,
           isMultiplayer: true,
           minBet: room.minBet
-        } 
-      });
-
-    } catch (error) {
-      console.error('Oyun başlatma hatası:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Oyun başlatılırken bir hata oluştu');
-    }
-  };
-
-  const handleForceStartGame = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.');
-        navigate('/login');
-        return;
-      }
-
-      // Önce bahis formuna yönlendir
-      navigate(`/bet/${roomId}`, { 
-        state: { 
-          returnPath: `/room/${roomId}`,
-          isMultiplayer: true,
-          minBet: room.minBet,
-          forceStart: true
         } 
       });
 
@@ -247,17 +245,6 @@ const RoomContainer = ({ user }) => {
             >
               Oyunu Başlat
             </button>
-            {currentPlayer.isReady && (
-              <button
-                onClick={handleForceStartGame}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-              >
-                <span>Tek Başına Başlat</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -265,58 +252,15 @@ const RoomContainer = ({ user }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#111827] p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Oda Başlığı */}
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-white">
-            {room.name} <span className="text-sm text-gray-400">({room.currentPlayers?.length || 0}/{room.maxPlayers})</span>
-          </h2>
-          <button
-            onClick={handleLeaveRoom}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Odadan Ayrıl
-          </button>
-        </div>
-
-        {/* Oyuncular Listesi */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
-          <h3 className="text-xl font-semibold text-white mb-4">Oyuncular</h3>
-          <div className="space-y-4">
-            {room.currentPlayers?.map((player, index) => {
-              const playerId = player.userId?._id || player.userId;
-              return (
-                <div key={`${playerId}-${index}`} className="flex items-center justify-between bg-gray-700 p-4 rounded">
-                  <div className="flex items-center">
-                    <span className="text-white">{player.username}</span>
-                    {player.isOwner && (
-                      <span className="ml-2 px-2 py-1 bg-yellow-500 text-xs text-black rounded">Kurucu</span>
-                    )}
-                    {player.isReady && (
-                      <span className="ml-2 px-2 py-1 bg-green-500 text-xs text-black rounded">Hazır</span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-yellow-400">{player.chips} Chip</span>
-                    {room.currentPlayers[0]?.userId === user?.id && playerId !== user?.id && (
-                      <button
-                        onClick={() => kickPlayer(playerId)}
-                        className="px-2 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                      >
-                        At
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Kontrol Butonları */}
-        {renderGameControls()}
-      </div>
+    <div className="min-h-screen bg-[#111827]">
+      <RoomDetails
+        room={room}
+        user={user}
+        onLeaveRoom={handleLeaveRoom}
+        onToggleReady={toggleReady}
+        onStartGame={handleStartGame}
+        onKickPlayer={kickPlayer}
+      />
     </div>
   );
 };
