@@ -663,14 +663,6 @@ const gameController = {
                 return res.status(404).json({ message: 'Oda bulunamadı' });
             }
 
-            // Kullanıcının odada olup olmadığını kontrol et
-            const playerInRoom = room.currentPlayers.find(p => 
-                (p.userId._id || p.userId).toString() === userId
-            );
-            if (!playerInRoom) {
-                return res.status(403).json({ message: 'Bu odada değilsiniz' });
-            }
-
             // Kullanıcıyı kontrol et
             const user = await User.findById(userId);
             if (!user) {
@@ -694,36 +686,18 @@ const gameController = {
                 });
             }
 
-            // Mevcut oyunu kontrol et
-            let game = await Game.findOne({ 
-                room: roomId, 
+            // Yeni oyun oluştur
+            const game = new Game({
+                room: roomId,
+                gameType: 'multi',
                 status: 'betting',
-                'players.playerId': userId 
-            });
-
-            // Eğer oyuncu zaten bahis koymuşsa hata ver
-            if (game) {
-                return res.status(400).json({ message: 'Zaten bahis yapmışsınız' });
-            }
-
-            // Yeni oyun oluştur veya mevcut oyuna katıl
-            game = await Game.findOne({ room: roomId, status: 'betting' });
-            if (!game) {
-                game = new Game({
-                    room: roomId,
-                    gameType: 'multi',
-                    status: 'betting',
-                    deck: createDeck(),
-                    players: []
-                });
-            }
-
-            // Oyuncuyu oyuna ekle
-            game.players.push({
-                playerId: userId,
-                bet: betAmount,
-                hand: [],
-                status: 'betting'
+                deck: createDeck(),
+                players: [{
+                    playerId: userId,
+                    bet: betAmount,
+                    hand: [],
+                    status: 'betting'
+                }]
             });
 
             // Kullanıcının chip'lerini güncelle
