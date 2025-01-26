@@ -107,6 +107,20 @@ npm run dev
 
 Detaylı özellik listesi ve API dokümantasyonu için [MULTIPLAYER.md](./MULTIPLAYER.md) dosyasına bakın.
 
+## Oyun Görselleri
+![Image](https://github.com/user-attachments/assets/ba21a9e4-08fb-46cf-912a-1496de172a6a)
+![Image](https://github.com/user-attachments/assets/2d1e5a1a-285c-4308-8611-ceb44edb7d06)
+![Image](https://github.com/user-attachments/assets/451e715c-d897-4e2a-b7ef-6446e8fe58aa)
+![Image](https://github.com/user-attachments/assets/e772cb9c-8b26-46d2-9343-52859b752555)
+![Image](https://github.com/user-attachments/assets/a944163c-25f5-4a35-8dae-76a02b1dab6e)
+![Image](https://github.com/user-attachments/assets/64ec6796-0493-4cc9-9f00-2d286f57b9b2)
+![Image](https://github.com/user-attachments/assets/397cc641-bbb1-4540-8807-1f3ca7829f96)
+![Image](https://github.com/user-attachments/assets/f1a008f1-0c0b-4305-bd86-bed2a9bb3e84)
+![Image](https://github.com/user-attachments/assets/df69c6ad-117a-4f5d-8028-7fc1d4989507)
+![Image](https://github.com/user-attachments/assets/43946260-1cb6-4ec9-9b76-5b0a604e6aca)
+![Image](https://github.com/user-attachments/assets/65b332cb-e65c-4dc8-831a-b157ccbe0477)
+
+
 ## Katkıda Bulunma 🤝
 
 1. Bu depoyu fork edin
